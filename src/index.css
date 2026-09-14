@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+  --color-gold: var(--gold);
+
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --cream: #f5f2ec;
+    --ink: #14120f;
+    --gold: #b9862f;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --cream: #0c0b09;
+    --ink: #f3eee6;
+    --gold: #d4a017;
+  }
+
+  body {
+    @apply bg-cream text-ink antialiased;
+    font-family: var(--font-sans);
+  }
+}
