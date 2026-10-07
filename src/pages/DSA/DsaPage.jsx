@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
-import { dsaQuestions } from '../data/dsaQuestions.js'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useOutletContext } from 'react-router-dom'
+import axios from 'axios'
+
+const backendUrl = import.meta.env.BACKEND_URL
 
 const difficulties = ['All', 'Easy', 'Medium', 'Hard']
 
@@ -10,24 +12,31 @@ const difficultyStyles = {
   Hard: 'bg-rose-500/12 text-rose-700 dark:text-rose-300',
 }
 
-export default function Dashboard() {
+export default function DsaPage() {
   const { search } = useOutletContext()
   const [difficulty, setDifficulty] = useState('All')
+  const [problems, setProblems] = useState([])
+
+  useEffect(() => {
+    axios
+      .get(`${backendUrl}/problem`)
+      .then((res) => setProblems(res.data.data))
+  }, [])
 
   const questions = useMemo(() => {
     const query = search.trim().toLowerCase()
 
-    return dsaQuestions.filter((question) => {
+    return problems.filter((question) => {
       const matchesDifficulty =
         difficulty === 'All' || question.difficulty === difficulty
       const matchesSearch =
         !query ||
         question.title.toLowerCase().includes(query) ||
-        question.tags.some((tag) => tag.toLowerCase().includes(query))
+        question.tags?.some((tag) => tag.toLowerCase().includes(query))
 
       return matchesDifficulty && matchesSearch
     })
-  }, [search, difficulty])
+  }, [search, difficulty, problems])
 
   return (
     <div>
@@ -76,20 +85,25 @@ export default function Dashboard() {
           <ul>
             {questions.map((question, index) => (
               <li
-                key={question.id}
-                className="border-ink/10 hover:bg-ink/[0.03] dark:border-white/10 grid grid-cols-1 gap-2 border-b px-5 py-4 last:border-b-0 md:grid-cols-[3rem_1fr_8rem_10rem_6rem] md:items-center md:gap-3"
+                key={question.slug || question._id}
+                className="border-ink/10 hover:bg-ink/3 dark:border-white/10 grid grid-cols-1 gap-2 border-b px-5 py-4 last:border-b-0 md:grid-cols-[3rem_1fr_8rem_10rem_6rem] md:items-center md:gap-3"
               >
                 <span className="text-ink/40 font-mono text-xs">
                   {String(index + 1).padStart(2, '0')}
                 </span>
-                <p className="font-medium">{question.title}</p>
+                <Link
+                  to={`/dsa-practice/${question.slug}`}
+                  className="hover:text-gold font-medium"
+                >
+                  {question.title}
+                </Link>
                 <span
                   className={`w-fit rounded-full px-2.5 py-1 text-xs font-medium ${difficultyStyles[question.difficulty]}`}
                 >
                   {question.difficulty}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {question.tags.map((tag) => (
+                  {question.tags?.map((tag) => (
                     <span
                       key={tag}
                       className="border-ink/10 text-ink/60 dark:border-white/10 rounded-full border px-2 py-0.5 text-[11px]"

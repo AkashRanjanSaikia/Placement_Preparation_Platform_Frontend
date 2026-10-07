@@ -9,6 +9,7 @@ import {
   Moon,
   Search,
   Sun,
+  Cpu,
   Trophy,
   Users,
   X,
@@ -16,12 +17,12 @@ import {
 import { useTheme } from '../context/ThemeProvider.jsx'
 
 const services = [
-  { to: '/dashboard', label: 'DSA Practice', icon: Code2, end: true },
-  { to: '/dashboard/ai-interview', label: 'AI Interview', icon: MessageSquare },
-  { to: '/dashboard/aptitude', label: 'Aptitude', icon: BarChart3 },
-  { to: '/dashboard/contests', label: 'Contests', icon: Trophy },
-  { to: '/dashboard/leaderboard', label: 'Leaderboard', icon: Users },
-]
+  { to: '/dsa-practice', label: 'DSA Practice', icon: Code2, end: true },
+  { to: '/aptitude', label: 'Aptitude', icon: BarChart3 },
+  { to: '/cs-core', label: 'CS Fundamentals', icon: Cpu },
+  { to: '/contests', label: 'Contests', icon: Trophy },
+  { to: '/interview', label: 'AI Interview', icon: MessageSquare },
+];
 
 export default function DashboardLayout() {
   const { theme, toggleTheme } = useTheme()

@@ -56,7 +56,7 @@ export default function Home() {
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const isDark = theme === 'dark'
-  const goToDashboard = () => navigate('/dashboard')
+  const goToDashboard = () => navigate('/dsa-practice')
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -69,7 +69,7 @@ export default function Home() {
       <div
         className={
           isDark
-            ? 'fixed inset-0 z-0 bg-gradient-to-r from-black/80 via-black/45 to-black/15'
+            ? 'fixed inset-0 z-0 bg-linear-to-r from-black/80 via-black/45 to-black/15'
             : 'bg-cream/20 fixed inset-0 z-0'
         }
       />
@@ -89,7 +89,7 @@ export default function Home() {
         <span className="bg-ink/40 h-1 w-1 rounded-full" />
       </div>
 
-      <p className="text-ink/35 pointer-events-none absolute bottom-10 left-8 z-0 hidden max-w-[9rem] font-mono text-[11px] leading-relaxed lg:block">
+      <p className="text-ink/35 pointer-events-none absolute bottom-10 left-8 z-0 hidden max-w-36 font-mono text-[11px] leading-relaxed lg:block">
         “A Developer Builds A Better Tomorrow”
       </p>
 
@@ -106,7 +106,7 @@ export default function Home() {
         keep going..
       </p>
 
-      <div className="relative z-10 mx-auto max-w-[1400px] px-6 lg:px-14">
+      <div className="relative z-10 mx-auto max-w-350 px-6 lg:px-14">
         {/* Navbar */}
         <header className="flex items-center justify-between py-8">
           <span className="font-mono text-lg font-semibold tracking-tight">
