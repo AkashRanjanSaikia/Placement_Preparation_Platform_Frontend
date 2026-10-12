@@ -20,18 +20,23 @@ export default function DsaPage() {
   useEffect(() => {
     axios
       .get(`${backendUrl}/problem`)
-      .then((res) => setProblems(res.data.data))
+      .then((res) => {
+        const list = res.data?.data
+        setProblems(Array.isArray(list) ? list : [])
+      })
+      .catch(() => setProblems([]))
   }, [])
 
   const questions = useMemo(() => {
-    const query = search.trim().toLowerCase()
+    const query = (search ?? '').trim().toLowerCase()
+    const list = Array.isArray(problems) ? problems : []
 
-    return problems.filter((question) => {
+    return list.filter((question) => {
       const matchesDifficulty =
         difficulty === 'All' || question.difficulty === difficulty
       const matchesSearch =
         !query ||
-        question.title.toLowerCase().includes(query) ||
+        question.title?.toLowerCase().includes(query) ||
         question.tags?.some((tag) => tag.toLowerCase().includes(query))
 
       return matchesDifficulty && matchesSearch

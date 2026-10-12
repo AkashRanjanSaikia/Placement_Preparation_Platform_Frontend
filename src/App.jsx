@@ -4,6 +4,7 @@ import Home from './pages/Home.jsx'
 import ProblemSolve from './pages/DSA/ProblemSolve.jsx'
 import DsaPage from './pages/DSA/DsaPage.jsx'
 import AptitudePage from './pages/Aptitude/Aptitude.jsx'
+import AptitudeSolve from './pages/Aptitude/AptitudeSolve.jsx'
 import ContestsPage from './pages/Contests/Contests.jsx'
 import CSCorePage from './pages/CSCore/CSCore.jsx'
 import InterviewPage from './pages/Interview/Interview.jsx'
@@ -13,6 +14,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/dsa-practice/:slug" element={<ProblemSolve />} />
+      <Route path="/aptitude/:setId" element={<AptitudeSolve />} />
 
       <Route element={<DashboardLayout />}>
         {/* <Route index element={<UserProfile />} />  yet to implement */}
