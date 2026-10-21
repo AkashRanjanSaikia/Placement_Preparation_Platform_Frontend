@@ -1,8 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react'
+import { ArrowLeft, Moon, Sun } from 'lucide-react'
 import { useTheme } from '../../context/ThemeProvider.jsx'
-import { findAptitudeSet } from './aptitudeHelpers.js'
+import {
+  checkQuestionAnswer,
+  fetchQuestionPage,
+  findAptitudeSet,
+  getSubjectForSection,
+} from './aptitudeHelpers.js'
+
+const QUESTIONS_PER_PAGE = 10
 
 export default function AptitudeSolve() {
   const { setId } = useParams()
@@ -11,21 +18,95 @@ export default function AptitudeSolve() {
   const isDark = theme === 'dark'
 
   const match = useMemo(() => findAptitudeSet(setId), [setId])
-  const questions = match?.set?.questions ?? []
+  const subject = useMemo(() => {
+    if (!match?.section?.id) return null
+    return getSubjectForSection(match.section.id)
+  }, [match])
 
-  const [index, setIndex] = useState(0)
-  const [answers, setAnswers] = useState({})
-  const [finished, setFinished] = useState(false)
+  const [apiPage, setApiPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalQuestions, setTotalQuestions] = useState(0)
+  const [questions, setQuestions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [checks, setChecks] = useState({})
+  const [checkingId, setCheckingId] = useState(null)
 
-  const current = questions[index]
-  const selected = current ? answers[current.id] : undefined
+  useEffect(() => {
+    setApiPage(1)
+    setChecks({})
+  }, [setId])
 
-  const score = useMemo(() => {
-    if (!finished) return 0
-    return questions.reduce((total, question) => {
-      return answers[question.id] === question.correctIndex ? total + 1 : total
-    }, 0)
-  }, [finished, questions, answers])
+  useEffect(() => {
+    if (!setId || !subject) {
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+
+    async function loadPage() {
+      setLoading(true)
+      setLoadError(false)
+      try {
+        const data = await fetchQuestionPage({
+          subject,
+          topic: setId,
+          page: apiPage,
+          limit: QUESTIONS_PER_PAGE,
+        })
+        if (cancelled) return
+        const list = Array.isArray(data.data) ? data.data : []
+        setQuestions(list)
+        setTotalPages(data.totalPages ?? 0)
+        setTotalQuestions(data.total ?? 0)
+      } catch {
+        if (!cancelled) {
+          setQuestions([])
+          setLoadError(true)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    loadPage()
+    return () => {
+      cancelled = true
+    }
+  }, [setId, subject, apiPage])
+
+  const handleCheck = useCallback(async (question, optionIndex) => {
+    if (!question?._id) return
+
+    const checkState = checks[question._id]
+    const solved = checkState?.result === 'correct'
+    if (checkingId === question._id || solved) return
+
+    setCheckingId(question._id)
+    try {
+      const data = await checkQuestionAnswer(question._id, optionIndex)
+      const result = data.correct ? 'correct' : 'wrong'
+      setChecks((prev) => ({
+        ...prev,
+        [question._id]: {
+          selectedIndex: optionIndex,
+          result,
+          explanation: data.explanation,
+        },
+      }))
+    } catch {
+      setChecks((prev) => ({
+        ...prev,
+        [question._id]: {
+          selectedIndex: optionIndex,
+          result: 'error',
+        },
+      }))
+    } finally {
+      setCheckingId(null)
+    }
+  }, [checks, checkingId])
 
   if (!match) {
     return (
@@ -35,7 +116,7 @@ export default function AptitudeSolve() {
     )
   }
 
-  if (questions.length === 0) {
+  if (!loading && (loadError || totalQuestions === 0)) {
     return (
       <SolveShell
         isDark={isDark}
@@ -43,23 +124,21 @@ export default function AptitudeSolve() {
         title={match.set.title}
         onBack={() => navigate('/aptitude')}
       >
-        <p className="text-ink/70 text-sm">Questions for this set are coming soon.</p>
+        <p className="text-ink/70 text-sm">
+          {loadError
+            ? 'Could not load questions. Check that the backend is running.'
+            : 'Questions for this set are coming soon.'}
+        </p>
       </SolveShell>
     )
   }
 
-  const goPrev = () => setIndex((i) => Math.max(0, i - 1))
-  const goNext = () => setIndex((i) => Math.min(questions.length - 1, i + 1))
+  const goPrevPage = () => setApiPage((p) => Math.max(1, p - 1))
+  const goNextPage = () => setApiPage((p) => Math.min(totalPages, p + 1))
 
-  const selectOption = (optionIndex) => {
-    if (finished || !current) return
-    setAnswers((prev) => ({ ...prev, [current.id]: optionIndex }))
-  }
-
-  const finish = () => {
-    setFinished(true)
-    setIndex(0)
-  }
+  const pageStart =
+    totalQuestions === 0 ? 0 : (apiPage - 1) * QUESTIONS_PER_PAGE + 1
+  const pageEnd = Math.min(apiPage * QUESTIONS_PER_PAGE, totalQuestions)
 
   return (
     <SolveShell
@@ -69,141 +148,127 @@ export default function AptitudeSolve() {
       subtitle={match.section.title}
       onBack={() => navigate('/aptitude')}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-ink/50 font-mono text-xs tracking-widest uppercase">
-          Question {index + 1} of {questions.length}
-        </p>
-        {finished ? (
-          <p className="text-ink font-mono text-sm">
-            Score: {score}/{questions.length}
-          </p>
-        ) : (
-          <button
-            type="button"
-            onClick={finish}
-            className="bg-ink text-cream rounded-full px-4 py-1.5 text-sm font-medium dark:bg-gold dark:text-black"
-          >
-            Submit set
-          </button>
-        )}
-      </div>
-
-      {finished ? (
-        <div className="mt-6 flex flex-col gap-6">
-          <p className="text-ink/70 text-sm">
-            Review your answers below. Correct options are highlighted in green.
-          </p>
-          {questions.map((question, qIndex) => {
-            const userPick = answers[question.id]
-            const isCorrect = userPick === question.correctIndex
-
-            return (
-              <article
-                key={question.id}
-                className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 rounded-2xl border p-5 backdrop-blur-md"
-              >
-                <p className="text-ink/45 font-mono text-[11px] tracking-widest uppercase">
-                  Q{qIndex + 1}
-                </p>
-                {question.passage ? (
-                  <p className="text-ink/75 mt-2 text-sm leading-relaxed whitespace-pre-wrap">
-                    {question.passage}
-                  </p>
-                ) : null}
-                <p className="mt-3 font-medium leading-relaxed">{question.text}</p>
-                <ul className="mt-4 flex flex-col gap-2">
-                  {question.options.map((label, optionIndex) => {
-                    const isAnswer = optionIndex === question.correctIndex
-                    const isUser = optionIndex === userPick
-                    let optionClass =
-                      'border-ink/15 text-ink/80 dark:border-white/10 border rounded-xl px-4 py-3 text-sm'
-
-                    if (isAnswer) {
-                      optionClass =
-                        'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 border rounded-xl px-4 py-3 text-sm'
-                    } else if (isUser && !isCorrect) {
-                      optionClass =
-                        'border-rose-500/40 bg-rose-500/10 text-rose-800 dark:text-rose-200 border rounded-xl px-4 py-3 text-sm'
-                    }
-
-                    return (
-                      <li key={optionIndex} className={optionClass}>
-                        {label}
-                      </li>
-                    )
-                  })}
-                </ul>
-                {question.explanation ? (
-                  <p className="text-ink/60 mt-3 text-sm leading-relaxed">
-                    {question.explanation}
-                  </p>
-                ) : null}
-              </article>
-            )
-          })}
-          <button
-            type="button"
-            onClick={() => {
-              setFinished(false)
-              setAnswers({})
-              setIndex(0)
-            }}
-            className="border-ink/15 text-ink/70 hover:border-ink/30 w-fit rounded-full border px-4 py-2 text-sm"
-          >
-            Try again
-          </button>
-        </div>
+      {loading ? (
+        <p className="text-ink/60 text-sm">Loading questions…</p>
       ) : (
-        <div className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 mt-6 rounded-2xl border p-5 backdrop-blur-md sm:p-6">
-          {current.passage ? (
-            <p className="text-ink/75 text-sm leading-relaxed whitespace-pre-wrap">
-              {current.passage}
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-ink/50 font-mono text-xs tracking-widest uppercase">
+              {totalQuestions} question{totalQuestions === 1 ? '' : 's'}
+              {totalPages > 1
+                ? ` · Showing ${pageStart}–${pageEnd} (page ${apiPage} of ${totalPages})`
+                : ''}
             </p>
-          ) : null}
-          <p className="mt-4 text-lg font-medium leading-relaxed">{current.text}</p>
+            <p className="text-ink/45 font-mono text-[11px]">
+              Tap an option to check your answer
+            </p>
+          </div>
 
-          <ul className="mt-6 flex flex-col gap-2">
-            {current.options.map((label, optionIndex) => {
-              const isSelected = selected === optionIndex
+          <ol className="mt-6 flex flex-col gap-6">
+            {questions.map((question, questionIndex) => {
+              const questionNumber = pageStart + questionIndex
+              const checkState = checks[question._id]
+              const solved = checkState?.result === 'correct'
+              const isChecking = checkingId === question._id
+              const options = Array.isArray(question.options)
+                ? question.options
+                : []
+
               return (
-                <li key={optionIndex}>
-                  <button
-                    type="button"
-                    onClick={() => selectOption(optionIndex)}
-                    className={
-                      isSelected
-                        ? 'border-gold/50 bg-gold/15 text-ink w-full rounded-xl border px-4 py-3 text-left text-sm font-medium dark:text-gold'
-                        : 'border-ink/15 text-ink/80 hover:border-ink/30 dark:border-white/10 w-full rounded-xl border px-4 py-3 text-left text-sm'
-                    }
-                  >
-                    {label}
-                  </button>
+                <li
+                  key={question._id}
+                  className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 rounded-2xl border p-5 backdrop-blur-md sm:p-6"
+                >
+                  <p className="text-ink/45 font-mono text-[11px] tracking-widest uppercase">
+                    Question {questionNumber}
+                  </p>
+                  <p className="mt-2 text-lg font-medium leading-relaxed">
+                    {question.questionText}
+                  </p>
+
+                  <ul className="mt-6 flex flex-col gap-2">
+                    {options.map((label, optionIndex) => {
+                      const isSelected =
+                        checkState?.selectedIndex === optionIndex
+                      const showCorrect = solved && isSelected
+                      const showWrong =
+                        checkState?.result === 'wrong' && isSelected
+
+                      let optionClass =
+                        'border-ink/15 text-ink/80 hover:border-ink/30 dark:border-white/10 w-full rounded-xl border px-4 py-3 text-left text-sm disabled:opacity-60'
+
+                      if (showCorrect) {
+                        optionClass =
+                          'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 w-full rounded-xl border px-4 py-3 text-left text-sm font-medium'
+                      } else if (showWrong) {
+                        optionClass =
+                          'border-rose-500/40 bg-rose-500/10 text-rose-800 dark:text-rose-200 w-full rounded-xl border px-4 py-3 text-left text-sm'
+                      } else if (isSelected) {
+                        optionClass =
+                          'border-gold/50 bg-gold/15 text-ink w-full rounded-xl border px-4 py-3 text-left text-sm font-medium dark:text-gold'
+                      }
+
+                      return (
+                        <li key={optionIndex}>
+                          <button
+                            type="button"
+                            disabled={isChecking || solved}
+                            onClick={() => handleCheck(question, optionIndex)}
+                            className={optionClass}
+                          >
+                            {label}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+
+                  {checkState?.result === 'wrong' ? (
+                    <p className="text-rose-700/90 dark:text-rose-300/90 mt-4 text-sm">
+                      Not quite — try another option.
+                    </p>
+                  ) : null}
+
+                  {checkState?.result === 'correct' && checkState.explanation ? (
+                    <p className="text-ink/60 mt-4 text-sm leading-relaxed">
+                      {checkState.explanation}
+                    </p>
+                  ) : null}
+
+                  {checkState?.result === 'error' ? (
+                    <p className="text-ink/60 mt-4 text-sm">
+                      Could not verify your answer. Please try again.
+                    </p>
+                  ) : null}
                 </li>
               )
             })}
-          </ul>
+          </ol>
 
-          <div className="mt-8 flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={goPrev}
-              disabled={index === 0}
-              className="border-ink/15 text-ink/70 hover:border-ink/30 flex items-center gap-1 rounded-full border px-3 py-2 text-sm disabled:opacity-40"
-            >
-              <ChevronLeft size={16} />
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={index === questions.length - 1}
-              className="border-ink/15 text-ink/70 hover:border-ink/30 flex items-center gap-1 rounded-full border px-3 py-2 text-sm disabled:opacity-40"
-            >
-              Next
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
+          {totalPages > 1 ? (
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={goPrevPage}
+                disabled={apiPage <= 1}
+                className="border-ink/15 text-ink/70 hover:border-ink/30 rounded-full border px-4 py-2 text-sm disabled:opacity-40"
+              >
+                Previous page
+              </button>
+              <span className="text-ink/50 font-mono text-xs">
+                Page {apiPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={goNextPage}
+                disabled={apiPage >= totalPages}
+                className="border-ink/15 text-ink/70 hover:border-ink/30 rounded-full border px-4 py-2 text-sm disabled:opacity-40"
+              >
+                Next page
+              </button>
+            </div>
+          ) : null}
+        </>
       )}
     </SolveShell>
   )
