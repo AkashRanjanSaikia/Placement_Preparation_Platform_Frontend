@@ -1,0 +1,35 @@
+{
+  "sections": [
+    {
+      "id": "core",
+      "title": "Core subjects",
+      "description": "Operating systems, databases, computer networks, and object-oriented programming for campus placements.",
+      "sets": [
+        {
+          "id": "operating-systems",
+          "title": "Operating Systems",
+          "difficulty": "Medium",
+          "tags": ["scheduling", "memory", "processes"]
+        },
+        {
+          "id": "dbms",
+          "title": "DBMS",
+          "difficulty": "Medium",
+          "tags": ["sql", "normalization", "transactions"]
+        },
+        {
+          "id": "computer-networks",
+          "title": "Computer Networks",
+          "difficulty": "Medium",
+          "tags": ["osi", "tcp-ip", "routing"]
+        },
+        {
+          "id": "oop",
+          "title": "OOP",
+          "difficulty": "Medium",
+          "tags": ["classes", "inheritance", "polymorphism"]
+        }
+      ]
+    }
+  ]
+}

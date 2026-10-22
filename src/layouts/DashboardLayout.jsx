@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { useTheme } from '../context/ThemeProvider.jsx'
+import { useAuth } from '../context/AuthProvider.jsx'
 
 const services = [
   { to: '/dsa-practice', label: 'DSA Practice', icon: Code2, end: true },
@@ -28,6 +29,7 @@ export default function DashboardLayout() {
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
   const navigate = useNavigate()
+  const { logout } = useAuth()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -110,7 +112,10 @@ export default function DashboardLayout() {
           <div className="border-ink/10 dark:border-white/10 border-t px-3 py-4">
             <button
               type="button"
-              onClick={() => navigate('/')}
+              onClick={() => {
+                logout()
+                navigate('/')
+              }}
               className="text-ink/70 hover:bg-ink/5 hover:text-ink flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium"
             >
               <LogOut size={16} />

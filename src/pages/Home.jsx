@@ -140,14 +140,14 @@ export default function Home() {
             </button>
             <button
               type="button"
-              onClick={goToDashboard}
+              onClick={() => navigate('/login')}
               className="border-ink/15 hover:border-ink/30 rounded-full border px-4 py-2 text-sm font-medium"
             >
               Log In
             </button>
             <button
               type="button"
-              onClick={goToDashboard}
+              onClick={() => navigate('/signup')}
               className="bg-ink text-cream hover:bg-ink/90 rounded-full px-4 py-2 text-sm font-medium"
             >
               Sign Up
