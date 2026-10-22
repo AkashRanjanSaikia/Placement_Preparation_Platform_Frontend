@@ -1,28 +1,37 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Moon, Sun } from 'lucide-react'
 import { useTheme } from '../../context/ThemeProvider.jsx'
 import {
   checkQuestionAnswer,
   fetchQuestionPage,
-  findCsCoreSet,
-  getSubjectForSection,
+  findCsCorePractice,
+  formatQuestionDifficulty,
+  questionDifficultyStyles,
 } from './csCoreHelpers.js'
 
 const QUESTIONS_PER_PAGE = 10
+const difficulties = ['All', 'Easy', 'Medium', 'Hard']
+
+function parseDifficultyParam(value) {
+  if (!value) return 'All'
+  const normalized =
+    value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
+  return difficulties.includes(normalized) ? normalized : 'All'
+}
 
 export default function CSCoreSolve() {
   const { setId } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
 
-  const match = useMemo(() => findCsCoreSet(setId), [setId])
-  const subject = useMemo(() => {
-    if (!match?.section?.id) return null
-    return getSubjectForSection(match.section.id)
-  }, [match])
+  const match = useMemo(() => findCsCorePractice(setId), [setId])
 
+  const initialDifficulty = parseDifficultyParam(searchParams.get('difficulty'))
+
+  const [difficulty, setDifficulty] = useState(initialDifficulty)
   const [apiPage, setApiPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
   const [totalQuestions, setTotalQuestions] = useState(0)
@@ -35,10 +44,16 @@ export default function CSCoreSolve() {
   useEffect(() => {
     setApiPage(1)
     setChecks({})
-  }, [setId])
+    setDifficulty(parseDifficultyParam(searchParams.get('difficulty')))
+  }, [setId, searchParams])
 
   useEffect(() => {
-    if (!setId || !subject) {
+    setApiPage(1)
+    setChecks({})
+  }, [difficulty])
+
+  useEffect(() => {
+    if (!setId || !match) {
       setLoading(false)
       return
     }
@@ -50,10 +65,10 @@ export default function CSCoreSolve() {
       setLoadError(false)
       try {
         const data = await fetchQuestionPage({
-          subject,
           topic: setId,
           page: apiPage,
           limit: QUESTIONS_PER_PAGE,
+          difficulty,
         })
         if (cancelled) return
         const list = Array.isArray(data.data) ? data.data : []
@@ -74,7 +89,7 @@ export default function CSCoreSolve() {
     return () => {
       cancelled = true
     }
-  }, [setId, subject, apiPage])
+  }, [setId, match, apiPage, difficulty])
 
   const handleCheck = useCallback(async (question, optionIndex) => {
     if (!question?._id) return
@@ -121,13 +136,16 @@ export default function CSCoreSolve() {
       <SolveShell
         isDark={isDark}
         toggleTheme={toggleTheme}
-        title={match.set.title}
+        title={match.title}
+        subtitle={match.subjectTitle}
         onBack={() => navigate('/cs-core')}
       >
         <p className="text-ink/70 text-sm">
           {loadError
             ? 'Could not load questions. Check that the backend is running.'
-            : 'Questions for this topic are coming soon.'}
+            : difficulty === 'All'
+              ? 'Questions for this topic are coming soon.'
+              : `No ${difficulty} questions in this topic. Try All.`}
         </p>
       </SolveShell>
     )
@@ -140,19 +158,41 @@ export default function CSCoreSolve() {
     totalQuestions === 0 ? 0 : (apiPage - 1) * QUESTIONS_PER_PAGE + 1
   const pageEnd = Math.min(apiPage * QUESTIONS_PER_PAGE, totalQuestions)
 
+  const subtitle =
+    match.sectionTitle && match.title !== match.sectionTitle
+      ? `${match.sectionTitle} · ${match.title}`
+      : match.subjectTitle
+
   return (
     <SolveShell
       isDark={isDark}
       toggleTheme={toggleTheme}
-      title={match.set.title}
-      subtitle={match.section.title}
+      title={match.title}
+      subtitle={subtitle}
       onBack={() => navigate('/cs-core')}
     >
       {loading ? (
         <p className="text-ink/60 text-sm">Loading questions…</p>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {difficulties.map((level) => (
+              <button
+                key={level}
+                type="button"
+                onClick={() => setDifficulty(level)}
+                className={
+                  difficulty === level
+                    ? 'bg-ink text-cream rounded-full px-4 py-1.5 text-sm font-medium dark:bg-gold dark:text-black'
+                    : 'border-ink/15 text-ink/70 hover:border-ink/30 rounded-full border px-4 py-1.5 text-sm'
+                }
+              >
+                {level}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-ink/50 font-mono text-xs tracking-widest uppercase">
               {totalQuestions} question{totalQuestions === 1 ? '' : 's'}
               {totalPages > 1
@@ -173,15 +213,26 @@ export default function CSCoreSolve() {
               const options = Array.isArray(question.options)
                 ? question.options
                 : []
+              const difficultyLabel = formatQuestionDifficulty(question.difficulty)
+              const difficultyClass =
+                questionDifficultyStyles[difficultyLabel] ??
+                questionDifficultyStyles.Medium
 
               return (
                 <li
                   key={question._id}
                   className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 rounded-2xl border p-5 backdrop-blur-md sm:p-6"
                 >
-                  <p className="text-ink/45 font-mono text-[11px] tracking-widest uppercase">
-                    Question {questionNumber}
-                  </p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-ink/45 font-mono text-[11px] tracking-widest uppercase">
+                      Question {questionNumber}
+                    </p>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${difficultyClass}`}
+                    >
+                      {difficultyLabel}
+                    </span>
+                  </div>
                   <p className="mt-2 text-lg font-medium leading-relaxed">
                     {question.questionText}
                   </p>
