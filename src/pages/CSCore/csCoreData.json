@@ -1,0 +1,96 @@
+{
+  "mixedPractice": {
+    "id": "all-topics",
+    "title": "All Topics"
+  },
+  "sections": [
+    {
+      "id": "operating-systems",
+      "title": "Operating Systems",
+      "description": "Processes, CPU scheduling, and memory management for placement interviews.",
+      "sets": [
+        {
+          "id": "os-process-management",
+          "title": "Process Management",
+          "tags": ["processes", "deadlock", "synchronization"]
+        },
+        {
+          "id": "os-cpu-scheduling",
+          "title": "CPU Scheduling",
+          "tags": ["scheduling", "fcfs", "round-robin"]
+        },
+        {
+          "id": "os-memory-management",
+          "title": "Memory Management",
+          "tags": ["paging", "virtual-memory", "tlb"]
+        }
+      ]
+    },
+    {
+      "id": "dbms",
+      "title": "DBMS",
+      "description": "SQL, schema design, normalization, and transaction concepts.",
+      "sets": [
+        {
+          "id": "dbms-sql-queries",
+          "title": "SQL and Queries",
+          "tags": ["sql", "joins", "ddl"]
+        },
+        {
+          "id": "dbms-normalization",
+          "title": "Normalization",
+          "tags": ["normal-forms", "keys", "dependencies"]
+        },
+        {
+          "id": "dbms-transactions",
+          "title": "Transactions",
+          "tags": ["acid", "isolation", "commit"]
+        }
+      ]
+    },
+    {
+      "id": "computer-networks",
+      "title": "Computer Networks",
+      "description": "Network models, addressing, routing, and common protocols.",
+      "sets": [
+        {
+          "id": "net-osi-tcp-models",
+          "title": "OSI and TCP/IP Models",
+          "tags": ["osi", "layers", "tcp-ip"]
+        },
+        {
+          "id": "net-ip-routing",
+          "title": "IP Addressing and Routing",
+          "tags": ["ip", "routing", "dns"]
+        },
+        {
+          "id": "net-transport-app-protocols",
+          "title": "Transport and Application Protocols",
+          "tags": ["tcp", "udp", "http"]
+        }
+      ]
+    },
+    {
+      "id": "oop",
+      "title": "OOP",
+      "description": "Object-oriented design, inheritance, polymorphism, and abstraction.",
+      "sets": [
+        {
+          "id": "oop-classes-objects",
+          "title": "Classes and Objects",
+          "tags": ["classes", "constructors", "static"]
+        },
+        {
+          "id": "oop-inheritance-polymorphism",
+          "title": "Inheritance and Polymorphism",
+          "tags": ["inheritance", "overriding", "overloading"]
+        },
+        {
+          "id": "oop-encapsulation-abstraction",
+          "title": "Encapsulation and Abstraction",
+          "tags": ["encapsulation", "abstraction", "access"]
+        }
+      ]
+    }
+  ]
+}
