@@ -5,7 +5,11 @@ import ProblemSolve from './pages/DSA/ProblemSolve.jsx'
 import DsaPage from './pages/DSA/DsaPage.jsx'
 import AptitudePage from './pages/Aptitude/Aptitude.jsx'
 import AptitudeSolve from './pages/Aptitude/AptitudeSolve.jsx'
-import ContestsPage from './pages/Contests/Contests.jsx'
+import ContestList from './pages/Contests/ContestList.jsx'
+import ContestDetail from './pages/Contests/ContestDetail.jsx'
+import ContestRoom from './pages/Contests/ContestRoom.jsx'
+import Leaderboard from './pages/Contests/Leaderboard.jsx'
+import CreateContest from './pages/Contests/CreateContest.jsx'
 import CSCorePage from './pages/CSCore/CSCore.jsx'
 import CSCoreSolve from './pages/CSCore/CSCoreSolve.jsx'
 import InterviewPage from './pages/Interview/Interview.jsx'
@@ -18,6 +22,7 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/admin/contest/create" element={<CreateContest mode="admin" />} />
       <Route path="/dsa-practice/:slug" element={<ProblemSolve />} />
       <Route path="/aptitude/:setId" element={<AptitudeSolve />} />
       <Route path="/cs-core/:setId" element={<CSCoreSolve />} />
@@ -28,7 +33,11 @@ function App() {
         <Route path="cs-core" element={<CSCorePage />} />
         <Route path="interview" element={<InterviewPage />} />
         <Route path="aptitude" element={<AptitudePage />} />
-        <Route path="contests" element={<ContestsPage />} />
+        <Route path="contests" element={<ContestList />} />
+        <Route path="contests/create" element={<CreateContest mode="host" />} />
+        <Route path="contests/:id" element={<ContestDetail />} />
+        <Route path="contests/:id/room" element={<ContestRoom />} />
+        <Route path="contests/:id/leaderboard" element={<Leaderboard />} />
       </Route>
     </Routes>
   )

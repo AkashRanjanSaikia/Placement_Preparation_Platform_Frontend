@@ -16,7 +16,9 @@ import { Group, Panel, Separator } from 'react-resizable-panels'
 import { useTheme } from '../../context/ThemeProvider.jsx'
 import Outputpanel from './OutputPanel.jsx'
 
-const backendUrl = import.meta.env.BACKEND_URL
+import { getApiBase } from '../../config/apiBase.js'
+
+const backendUrl = getApiBase()
 
 const languages = [
   { id: 'java', label: 'Java', monaco: 'java', judge0Id: 62 },

@@ -1,7 +1,9 @@
 import axios from 'axios'
 import aptitudeData from './aptitudeData.json'
 
-const backendUrl = import.meta.env.BACKEND_URL
+import { getApiBase } from '../../config/apiBase.js'
+
+const backendUrl = getApiBase()
 
 export const APTITUDE_CATEGORY = 'aptitude'
 

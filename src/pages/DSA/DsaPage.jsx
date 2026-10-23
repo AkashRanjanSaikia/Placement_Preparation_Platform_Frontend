@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 import axios from 'axios'
 
-const backendUrl = import.meta.env.BACKEND_URL
+import { getApiBase } from '../../config/apiBase.js'
+
+const backendUrl = getApiBase()
 
 const difficulties = ['All', 'Easy', 'Medium', 'Hard']
 

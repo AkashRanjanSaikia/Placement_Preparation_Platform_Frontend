@@ -1,6 +1,7 @@
 import axios from 'axios'
+import { getApiBase } from '../config/apiBase.js'
 
-const backendUrl = import.meta.env.BACKEND_URL
+const backendUrl = getApiBase()
 
 function getErrorMessage(error, fallback) {
   const message = error?.response?.data?.message
