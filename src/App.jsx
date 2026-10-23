@@ -10,6 +10,7 @@ import ContestDetail from './pages/Contests/ContestDetail.jsx'
 import ContestRoom from './pages/Contests/ContestRoom.jsx'
 import Leaderboard from './pages/Contests/Leaderboard.jsx'
 import CreateContest from './pages/Contests/CreateContest.jsx'
+import HostContestManage from './pages/Contests/HostContestManage.jsx'
 import CSCorePage from './pages/CSCore/CSCore.jsx'
 import CSCoreSolve from './pages/CSCore/CSCoreSolve.jsx'
 import InterviewPage from './pages/Interview/Interview.jsx'
@@ -35,6 +36,8 @@ function App() {
         <Route path="aptitude" element={<AptitudePage />} />
         <Route path="contests" element={<ContestList />} />
         <Route path="contests/create" element={<CreateContest mode="host" />} />
+        <Route path="contests/edit/:draftId" element={<CreateContest mode="host" />} />
+        <Route path="contests/manage/:id" element={<HostContestManage />} />
         <Route path="contests/:id" element={<ContestDetail />} />
         <Route path="contests/:id/room" element={<ContestRoom />} />
         <Route path="contests/:id/leaderboard" element={<Leaderboard />} />

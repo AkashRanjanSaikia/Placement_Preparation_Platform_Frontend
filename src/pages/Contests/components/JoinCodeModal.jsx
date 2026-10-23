@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'react'
 
-export default function JoinCodeModal({ open, onClose, onSubmit, loading, error }) {
+export default function JoinCodeModal({
+  open,
+  onClose,
+  onSubmit,
+  loading,
+  error,
+  initialCode = '',
+}) {
   const [code, setCode] = useState('')
 
   useEffect(() => {
-    if (!open) setCode('')
-  }, [open])
+    if (!open) {
+      setCode('')
+      return
+    }
+    setCode(initialCode ? String(initialCode).trim() : '')
+  }, [open, initialCode])
 
   if (!open) return null
 

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   getContest,
+  getMyContestSubmissions,
   registerForContest,
   regenerateJoinCode,
 } from './api/contestApi.js'
@@ -31,28 +32,84 @@ export default function ContestDetail() {
   const [joinError, setJoinError] = useState('')
   const [newJoinCode, setNewJoinCode] = useState(null)
   const [regenerating, setRegenerating] = useState(false)
+  const [myResults, setMyResults] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const loadContestPage = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!silent) setLoading(true)
+      else setRefreshing(true)
+      try {
+        const payload = await getContest(id, token)
+        const nextContest = payload?.data ?? null
+        setContest(nextContest)
+        setServerTime(payload?.serverTime ?? null)
+        setMessage('')
+
+        if (
+          nextContest?.status === 'completed' &&
+          nextContest.registered &&
+          token
+        ) {
+          const resultsPayload = await getMyContestSubmissions(id, token)
+          setMyResults(resultsPayload)
+        } else {
+          setMyResults(null)
+        }
+      } catch {
+        if (!silent) setMessage('Contest not found')
+      } finally {
+        if (!silent) setLoading(false)
+        setRefreshing(false)
+      }
+    },
+    [id, token],
+  )
 
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    getContest(id, token)
-      .then((payload) => {
-        if (!cancelled) {
-          setContest(payload?.data ?? null)
-          setServerTime(payload?.serverTime ?? null)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setMessage('Contest not found')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+    loadContestPage()
+  }, [loadContestPage])
 
-    return () => {
-      cancelled = true
+  function resultStatusLabel(row) {
+    if (row.status === 'correct') {
+      return (
+        <span className="text-emerald-600">
+          Correct (+{row.marksAwarded ?? 0})
+        </span>
+      )
     }
-  }, [id, token])
+    if (row.status === 'incorrect') {
+      return <span className="text-rose-600">Incorrect (0)</span>
+    }
+    if (row.status === 'not_submitted') {
+      return (
+        <span className="text-amber-700 dark:text-amber-300">
+          Not submitted (0)
+        </span>
+      )
+    }
+    if (row.status === 'pending') {
+      return <span className="text-ink/50">Grading…</span>
+    }
+    return <span className="text-ink/50">Not attempted (0)</span>
+  }
+
+  const resultsBySection = (() => {
+    const rows = myResults?.data ?? []
+    const groups = []
+    const indexByKey = new Map()
+    for (const row of rows) {
+      const key = row.sectionKey ?? row.sectionName
+      let group = indexByKey.get(key)
+      if (!group) {
+        group = { sectionName: row.sectionName, sectionType: row.sectionType, items: [] }
+        indexByKey.set(key, group)
+        groups.push(group)
+      }
+      group.items.push(row)
+    }
+    return groups
+  })()
 
   const untilStart = useUntilStart(contest?.startTime, serverTime)
   const timeLeft = useServerCountdown(
@@ -134,6 +191,14 @@ export default function ContestDetail() {
       </Link>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">{contest.title}</h1>
+        <button
+          type="button"
+          onClick={() => loadContestPage({ silent: true })}
+          disabled={refreshing}
+          className="border-ink/15 rounded-full border px-3 py-1 text-xs disabled:opacity-50"
+        >
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </button>
         <span
           className={
             contest.visibility === 'private'
@@ -144,6 +209,11 @@ export default function ContestDetail() {
           {contest.visibility === 'private' ? 'Private' : 'Public'}
         </span>
       </div>
+      {contest.requiresJoinCode && !contest.registered ? (
+        <p className="text-ink/55 mt-2 text-sm">
+          This is a private contest — you need a join code from the host to register.
+        </p>
+      ) : null}
       {contest.hostName ? (
         <p className="text-ink/50 mt-1 text-sm">Hosted by {contest.hostName}</p>
       ) : null}
@@ -156,6 +226,16 @@ export default function ContestDetail() {
       {contest.status === 'live' ? (
         <p className="text-ink/50 mt-1 font-mono text-xs">
           Time left: {timeLeft.label}
+        </p>
+      ) : null}
+      {contest.status === 'completed' && contest.myRank != null ? (
+        <p className="mt-3 rounded-xl bg-gold/15 px-4 py-2 text-sm">
+          Your rank: <strong>#{contest.myRank}</strong>
+          {contest.myScore != null ? ` · ${contest.myScore} points` : ''}
+          {' · '}
+          <Link to={`/contests/${id}/leaderboard`} className="underline">
+            Full leaderboard
+          </Link>
         </p>
       ) : null}
 
@@ -180,6 +260,62 @@ export default function ContestDetail() {
             Rules
           </p>
           <p className="mt-2">{contest.rules}</p>
+        </div>
+      ) : null}
+
+      {contest.status === 'completed' && myResults?.resultsVisible ? (
+        <div className="border-ink/10 mt-4 rounded-2xl border p-5 text-sm">
+          <p className="text-ink/50 font-mono text-[11px] tracking-widest uppercase">
+            Your results
+          </p>
+          <div className="mt-3 space-y-5">
+            {resultsBySection.map((section) => (
+              <div key={section.sectionName}>
+                <p className="text-sm font-medium">
+                  {section.sectionName}
+                  <span className="text-ink/45 ml-2 text-xs font-normal">
+                    ({section.sectionType})
+                  </span>
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {section.items.map((row) => (
+                    <li
+                      key={row.questionKey}
+                      className="flex flex-wrap items-center justify-between gap-2 border-b border-ink/5 py-2"
+                    >
+                      <span className="text-sm">
+                        Q{row.questionNumberInSection}
+                        <span className="text-ink/45 ml-2 text-xs">
+                          ({row.maxMarks ?? 0} marks)
+                        </span>
+                      </span>
+                      {resultStatusLabel(row)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <p className="text-ink/60 mt-3 text-xs">
+            Total:{' '}
+            {(myResults.data ?? []).reduce(
+              (sum, row) => sum + (row.marksAwarded ?? 0),
+              0,
+            )}{' '}
+            marks
+          </p>
+        </div>
+      ) : null}
+
+      {contest.isHost ? (
+        <div className="border-ink/10 mt-4 rounded-2xl border p-4 text-sm">
+          <p className="font-medium">You are hosting this contest</p>
+          <Link
+            to={`/contests/manage/${id}`}
+            className="mt-2 inline-block text-sm underline"
+          >
+            Open host dashboard
+          </Link>
         </div>
       ) : null}
 
@@ -245,6 +381,7 @@ export default function ContestDetail() {
         onSubmit={doRegister}
         loading={registering}
         error={joinError}
+        initialCode={searchParams.get('code') ?? ''}
       />
     </div>
   )

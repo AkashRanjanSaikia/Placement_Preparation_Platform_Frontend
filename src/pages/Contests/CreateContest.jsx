@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import AdminPasscodeGate from './components/AdminPasscodeGate.jsx'
 import PublishSuccessPanel from './components/PublishSuccessPanel.jsx'
 import ScheduleFields, {
@@ -13,6 +13,7 @@ import SectionEditor, {
 } from './components/SectionEditor.jsx'
 import {
   createContestDraft,
+  getHostContest,
   publishContest,
   updateContestDraft,
 } from './api/contestApi.js'
@@ -26,9 +27,11 @@ const STEPS = ['Details', 'Sections', 'Review']
 
 export default function CreateContest({ mode = 'host' }) {
   const isHost = mode === 'host'
+  const { draftId: draftIdParam } = useParams()
   const { token, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const { start, end } = defaultContestSchedule()
+  const [loadingDraft, setLoadingDraft] = useState(Boolean(draftIdParam && isHost))
   const [step, setStep] = useState(0)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -48,6 +51,41 @@ export default function CreateContest({ mode = 'host' }) {
       navigate('/login', { replace: true })
     }
   }, [isHost, isAuthenticated, navigate])
+
+  useEffect(() => {
+    if (!isHost || !draftIdParam || !token) return
+    let cancelled = false
+    setLoadingDraft(true)
+    getHostContest(draftIdParam, token)
+      .then((payload) => {
+        if (cancelled) return
+        const data = payload?.data
+        if (!data?.canEdit) {
+          navigate(`/contests/manage/${draftIdParam}`, { replace: true })
+          return
+        }
+        setDraftId(draftIdParam)
+        setTitle(data.title ?? '')
+        setDescription(data.description ?? '')
+        setRules(data.rules ?? '')
+        setVisibility(data.visibility ?? 'public')
+        setStartLocal(toDatetimeLocalValue(new Date(data.startTime)))
+        setEndLocal(toDatetimeLocalValue(new Date(data.endTime)))
+        setMaxParticipants(data.maxParticipants)
+        if (data.editableSections?.length) {
+          setSections(data.editableSections)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMessage('Could not load draft')
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDraft(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isHost, draftIdParam, token, navigate])
 
   const startIso = fromDatetimeLocalValue(startLocal)
   const endIso = fromDatetimeLocalValue(endLocal)
@@ -357,10 +395,21 @@ export default function CreateContest({ mode = 'host' }) {
     </div>
   )
 
+  if (loadingDraft) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <p className="text-ink/50 text-sm">Loading draft…</p>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <Link to="/contests" className="text-ink/50 text-sm hover:underline">
-        ← Back to contests
+      <Link
+        to={draftIdParam ? `/contests/manage/${draftIdParam}` : '/contests'}
+        className="text-ink/50 text-sm hover:underline"
+      >
+        ← Back
       </Link>
       {isHost ? formBody : <AdminPasscodeGate>{formBody}</AdminPasscodeGate>}
     </div>

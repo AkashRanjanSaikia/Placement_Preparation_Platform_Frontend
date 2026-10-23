@@ -55,8 +55,22 @@ export async function getContestAttempt(id, token) {
   return res.data
 }
 
-export async function submitContestAnswer(id, token, body) {
-  const res = await axios.post(`${backendUrl}/contest/${id}/submit`, body, {
+export async function saveContestAnswer(id, token, body) {
+  const res = await axios.put(`${backendUrl}/contest/${id}/answers`, body, {
+    headers: authHeaders(token),
+  })
+  return res.data
+}
+
+export async function runContestDsaCode(id, token, body) {
+  const res = await axios.post(`${backendUrl}/contest/${id}/run`, body, {
+    headers: authHeaders(token),
+  })
+  return res.data
+}
+
+export async function finalizeContestExam(id, token, body) {
+  const res = await axios.post(`${backendUrl}/contest/${id}/finalize`, body, {
     headers: authHeaders(token),
   })
   return res.data
@@ -115,6 +129,27 @@ export async function publishContest(id, mode, token) {
     : `${backendUrl}/admin/contest/${id}/publish`
   const res = await axios.post(url, {}, {
     headers: isHost ? authHeaders(token) : adminHeaders(),
+  })
+  return res.data
+}
+
+export async function listMyHostedContests(token) {
+  const res = await axios.get(`${backendUrl}/contest/host/mine`, {
+    headers: authHeaders(token),
+  })
+  return res.data
+}
+
+export async function getHostContest(id, token) {
+  const res = await axios.get(`${backendUrl}/contest/host/${id}`, {
+    headers: authHeaders(token),
+  })
+  return res.data
+}
+
+export async function deleteHostContestDraft(id, token) {
+  const res = await axios.delete(`${backendUrl}/contest/host/${id}`, {
+    headers: authHeaders(token),
   })
   return res.data
 }
