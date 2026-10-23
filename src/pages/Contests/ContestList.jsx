@@ -1,39 +1,129 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { listContests, listMyHostedContests } from './api/contestApi.js'
 import { useAuth } from '../../context/AuthProvider.jsx'
+import ContestRegisterJoinButtons from './components/ContestRegisterJoinButtons.jsx'
+import {
+  filterContestsByTitle,
+  filterContestsByVisibility,
+  filterHostedByStatus,
+  sortContestsByStartTime,
+} from './contestListHelpers.js'
+import { formatContestScheduleRange } from './utils/contestDateTime.js'
+import { buildLoginUrl } from '../../utils/authRedirect.js'
+
+const visibilityFilters = [
+  { id: 'all', label: 'All' },
+  { id: 'public', label: 'Public' },
+  { id: 'private', label: 'Private' },
+]
 
 const browseTabs = [
+  { id: 'live', label: 'Live', badgeClass: 'bg-red-500', showBadge: true },
+  { id: 'upcoming', label: 'Upcoming', badgeClass: 'bg-emerald-500', showBadge: true },
+  { id: 'completed', label: 'Completed', showBadge: false },
+]
+
+const hostStatusFilters = [
+  { id: 'all', label: 'All' },
   { id: 'live', label: 'Live' },
   { id: 'upcoming', label: 'Upcoming' },
   { id: 'completed', label: 'Completed' },
+  { id: 'draft', label: 'Draft' },
 ]
+
+const sortOptions = [
+  { id: 'start_desc', label: 'Start time (latest first)' },
+  { id: 'start_asc', label: 'Start time (earliest first)' },
+]
+
+function TabCountBadge({ count, badgeClass }) {
+  if (!count || count < 1) return null
+  const label = count > 99 ? '99+' : String(count)
+  return (
+    <span
+      className={`${badgeClass} absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-zinc-100 dark:ring-zinc-950`}
+      aria-hidden
+    >
+      {label}
+    </span>
+  )
+}
 
 const viewModes = [
   { id: 'browse', label: 'Join contests' },
   { id: 'mine', label: 'My hosting' },
 ]
 
-function formatWhen(value) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString()
-}
-
 function statusLabel(contest) {
   if (!contest.published) return 'Draft'
   return contest.status ?? '—'
 }
 
+const BROWSE_TAB_IDS = new Set(['live', 'upcoming', 'completed'])
+
 export default function ContestList() {
-  const { token } = useAuth()
+  const { token, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { search = '' } = useOutletContext() ?? {}
   const [viewMode, setViewMode] = useState('browse')
-  const [activeTab, setActiveTab] = useState('live')
+  const tabFromUrl = searchParams.get('tab')
+  const initialTab = BROWSE_TAB_IDS.has(tabFromUrl) ? tabFromUrl : 'live'
+  const [activeTab, setActiveTab] = useState(initialTab)
+  const [hostStatusFilter, setHostStatusFilter] = useState('all')
+  const [sortOrder, setSortOrder] = useState('start_desc')
+  const [visibilityFilter, setVisibilityFilter] = useState('all')
   const [contests, setContests] = useState([])
   const [myContests, setMyContests] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
+  const [tabCounts, setTabCounts] = useState({
+    live: 0,
+    upcoming: 0,
+    completed: 0,
+  })
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (BROWSE_TAB_IDS.has(tab)) {
+      setActiveTab(tab)
+      setViewMode('browse')
+    }
+  }, [searchParams])
+
+  const selectBrowseTab = useCallback(
+    (tabId) => {
+      setActiveTab(tabId)
+      setViewMode('browse')
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.set('tab', tabId)
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
+
+  const loadBrowseTabCounts = useCallback(async () => {
+    try {
+      const [liveRes, upcomingRes] = await Promise.all([
+        listContests({ status: 'live', token }),
+        listContests({ status: 'upcoming', token }),
+      ])
+      setTabCounts({
+        live: liveRes?.data?.length ?? 0,
+        upcoming: upcomingRes?.data?.length ?? 0,
+        completed: 0,
+      })
+    } catch {
+      /* keep previous counts */
+    }
+  }, [token])
 
   const loadContests = useCallback(
     async ({ silent = false } = {}) => {
@@ -45,6 +135,7 @@ export default function ContestList() {
         if (viewMode === 'browse') {
           const payload = await listContests({ status: activeTab, token })
           setContests(payload?.data ?? [])
+          await loadBrowseTabCounts()
         } else if (!token) {
           setMyContests([])
         } else {
@@ -62,12 +153,27 @@ export default function ContestList() {
         setRefreshing(false)
       }
     },
-    [viewMode, activeTab, token],
+    [viewMode, activeTab, token, loadBrowseTabCounts],
   )
 
   useEffect(() => {
     loadContests()
   }, [loadContests])
+
+  const sortKey = sortOrder === 'start_desc' ? 'desc' : 'asc'
+
+  const visibleBrowseContests = useMemo(() => {
+    const byVisibility = filterContestsByVisibility(contests, visibilityFilter)
+    const filtered = filterContestsByTitle(byVisibility, search)
+    return sortContestsByStartTime(filtered, sortKey)
+  }, [contests, search, sortKey, visibilityFilter])
+
+  const visibleHostedContests = useMemo(() => {
+    const byStatus = filterHostedByStatus(myContests, hostStatusFilter)
+    const byVisibility = filterContestsByVisibility(byStatus, visibilityFilter)
+    const filtered = filterContestsByTitle(byVisibility, search)
+    return sortContestsByStartTime(filtered, sortKey)
+  }, [myContests, hostStatusFilter, search, sortKey, visibilityFilter])
 
   return (
     <div>
@@ -94,7 +200,7 @@ export default function ContestList() {
           <button
             type="button"
             onClick={() => {
-              if (!token) navigate('/login')
+              if (!token) navigate(buildLoginUrl('/contests/create'))
               else navigate('/contests/create')
             }}
             className="bg-ink text-cream rounded-full px-5 py-2 text-sm font-medium dark:bg-gold dark:text-black"
@@ -127,9 +233,34 @@ export default function ContestList() {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => selectBrowseTab(tab.id)}
               className={
                 activeTab === tab.id
+                  ? 'relative bg-ink/10 rounded-full py-1.5 pr-5 pl-4 text-sm dark:bg-white/10'
+                  : 'relative border-ink/15 text-ink/70 rounded-full border py-1.5 pr-5 pl-4 text-sm'
+              }
+            >
+              {tab.label}
+              {tab.showBadge ? (
+                <TabCountBadge
+                  count={tabCounts[tab.id]}
+                  badgeClass={tab.badgeClass}
+                />
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {viewMode === 'mine' ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {hostStatusFilters.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setHostStatusFilter(tab.id)}
+              className={
+                hostStatusFilter === tab.id
                   ? 'bg-ink/10 rounded-full px-4 py-1.5 text-sm dark:bg-white/10'
                   : 'border-ink/15 text-ink/70 rounded-full border px-4 py-1.5 text-sm'
               }
@@ -139,6 +270,48 @@ export default function ContestList() {
           ))}
         </div>
       ) : null}
+
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-ink/50 font-mono text-[11px] tracking-widest uppercase">
+            Visibility
+          </span>
+          {visibilityFilters.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setVisibilityFilter(opt.id)}
+              className={
+                visibilityFilter === opt.id
+                  ? 'bg-ink/10 rounded-full px-3 py-1 text-xs font-medium dark:bg-white/10'
+                  : 'border-ink/15 text-ink/70 rounded-full border px-3 py-1 text-xs'
+              }
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label
+            htmlFor="contest-sort"
+            className="text-ink/50 font-mono text-[11px] tracking-widest uppercase"
+          >
+            Sort
+          </label>
+          <select
+            id="contest-sort"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="border-ink/15 bg-white dark:border-white/10 dark:bg-zinc-900 rounded-full border py-1.5 pr-8 pl-4 text-sm outline-none focus:border-gold/60"
+          >
+            {sortOptions.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       <div className="mt-6 space-y-3">
         {loading ? (
@@ -156,22 +329,47 @@ export default function ContestList() {
           <p className="text-ink/50 text-sm">No contests in this tab yet.</p>
         ) : null}
 
+        {viewMode === 'browse' &&
+        !loading &&
+        !error &&
+        contests.length > 0 &&
+        visibleBrowseContests.length === 0 ? (
+          <p className="text-ink/50 text-sm">
+            No contests match your search or filters.
+          </p>
+        ) : null}
+
         {viewMode === 'mine' && !loading && !error && myContests.length === 0 ? (
           <p className="text-ink/50 text-sm">
             You have not hosted any contests yet. Create one with Host a contest.
           </p>
         ) : null}
 
+        {viewMode === 'mine' &&
+        !loading &&
+        !error &&
+        myContests.length > 0 &&
+        visibleHostedContests.length === 0 ? (
+          <p className="text-ink/50 text-sm">
+            No hosted contests match this filter or search.
+          </p>
+        ) : null}
+
         {viewMode === 'browse'
-          ? contests.map((contest) => (
+          ? visibleBrowseContests.map((contest) => (
               <article
                 key={contest.id}
-                className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 rounded-2xl border p-5 backdrop-blur-md"
+                className="dashboard-panel rounded-2xl p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-lg font-semibold">{contest.title}</h2>
+                      {contest.registered ? (
+                        <span className="rounded-full bg-emerald-500/12 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800 dark:text-emerald-200">
+                          You&apos;re registered for this contest
+                        </span>
+                      ) : null}
                       {contest.visibility === 'private' ? (
                         <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] uppercase text-violet-800 dark:text-violet-200">
                           Private
@@ -179,7 +377,10 @@ export default function ContestList() {
                       ) : null}
                     </div>
                     <p className="text-ink/60 mt-1 text-sm">
-                      {formatWhen(contest.startTime)} → {formatWhen(contest.endTime)}
+                      {formatContestScheduleRange(
+                        contest.startTime,
+                        contest.endTime,
+                      )}
                     </p>
                     {contest.visibility === 'private' ? (
                       <p className="text-ink/55 mt-1 text-xs">
@@ -191,7 +392,7 @@ export default function ContestList() {
                       {contest.sections?.length ?? 0} sections
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => navigate(`/contests/${contest.id}`)}
@@ -199,14 +400,12 @@ export default function ContestList() {
                     >
                       Details
                     </button>
-                    {contest.status === 'live' && contest.registered ? (
-                      <Link
-                        to={`/contests/${contest.id}/room`}
-                        className="bg-ink text-cream rounded-full px-4 py-1.5 text-sm font-medium dark:bg-gold dark:text-black"
-                      >
-                        Enter room
-                      </Link>
-                    ) : null}
+                    <ContestRegisterJoinButtons
+                      contest={contest}
+                      token={token}
+                      isAuthenticated={isAuthenticated}
+                      onUpdated={() => loadContests({ silent: true })}
+                    />
                     {contest.status === 'completed' ? (
                       <Link
                         to={`/contests/${contest.id}/leaderboard`}
@@ -222,10 +421,10 @@ export default function ContestList() {
           : null}
 
         {viewMode === 'mine'
-          ? myContests.map((contest) => (
+          ? visibleHostedContests.map((contest) => (
               <article
                 key={contest.id}
-                className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 rounded-2xl border p-5 backdrop-blur-md"
+                className="dashboard-panel rounded-2xl p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -241,7 +440,10 @@ export default function ContestList() {
                       ) : null}
                     </div>
                     <p className="text-ink/60 mt-1 text-sm">
-                      {formatWhen(contest.startTime)} → {formatWhen(contest.endTime)}
+                      {formatContestScheduleRange(
+                        contest.startTime,
+                        contest.endTime,
+                      )}
                     </p>
                     <p className="text-ink/50 mt-2 text-xs">
                       {contest.sectionCount} sections · {contest.questionCount}{' '}
@@ -251,13 +453,24 @@ export default function ContestList() {
                         : ' · not published'}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/contests/manage/${contest.id}`)}
-                    className="bg-ink text-cream rounded-full px-4 py-1.5 text-sm font-medium dark:bg-gold dark:text-black"
-                  >
-                    Manage
-                  </button>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {(contest.status === 'upcoming' || contest.status === 'live') &&
+                    contest.published ? (
+                      <Link
+                        to={`/contests/${contest.id}/room`}
+                        className="contest-btn-enter rounded-full px-4 py-1.5 text-sm font-medium"
+                      >
+                        {contest.status === 'upcoming' ? 'Preview room' : 'Enter room'}
+                      </Link>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/contests/manage/${contest.id}`)}
+                      className="bg-ink text-cream rounded-full px-4 py-1.5 text-sm font-medium dark:bg-gold dark:text-black"
+                    >
+                      Manage
+                    </button>
+                  </div>
                 </div>
               </article>
             ))

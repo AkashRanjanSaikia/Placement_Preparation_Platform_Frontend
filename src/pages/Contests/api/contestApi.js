@@ -48,6 +48,15 @@ export async function registerForContest(id, token, joinCode) {
   return res.data
 }
 
+export async function lockContestRoom(id, token) {
+  const res = await axios.post(
+    `${backendUrl}/contest/${id}/room/leave`,
+    {},
+    { headers: authHeaders(token) },
+  )
+  return res.data
+}
+
 export async function getContestAttempt(id, token) {
   const res = await axios.get(`${backendUrl}/contest/${id}/attempt`, {
     headers: authHeaders(token),
@@ -147,8 +156,25 @@ export async function getHostContest(id, token) {
   return res.data
 }
 
-export async function deleteHostContestDraft(id, token) {
+export async function deleteHostContest(id, token, { confirmTitle } = {}) {
   const res = await axios.delete(`${backendUrl}/contest/host/${id}`, {
+    headers: authHeaders(token),
+    data: confirmTitle != null ? { confirmTitle } : undefined,
+  })
+  return res.data
+}
+
+export async function stopHostContest(id, token) {
+  const res = await axios.post(
+    `${backendUrl}/contest/host/${id}/stop`,
+    {},
+    { headers: authHeaders(token) },
+  )
+  return res.data
+}
+
+export async function getContestLiveState(id, token) {
+  const res = await axios.get(`${backendUrl}/contest/${id}/live-state`, {
     headers: authHeaders(token),
   })
   return res.data

@@ -1,19 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import Editor from '@monaco-editor/react'
 import axios from 'axios'
 import {
   ArrowLeft,
   Check,
   ChevronDown,
-  Moon,
   Play,
   RotateCcw,
   Send,
-  Sun,
 } from 'lucide-react'
 import { Group, Panel, Separator } from 'react-resizable-panels'
 import { useTheme } from '../../context/ThemeProvider.jsx'
+import ThemedBackdrop from '../../components/ThemedBackdrop.jsx'
+import ThemeProfileControls from '../../components/ThemeProfileControls.jsx'
 import Outputpanel from './OutputPanel.jsx'
 
 import { getApiBase } from '../../config/apiBase.js'
@@ -44,7 +44,7 @@ function ExampleBlock({ example, index }) {
   const { input, output, explanation } = example
 
   return (
-    <div className="border-ink/10 bg-ink/4 dark:border-white/10 dark:bg-white/5 mt-2 rounded-xl border p-3">
+    <div className="mt-2 rounded-xl border border-zinc-200/80 bg-zinc-100 p-3 dark:border-white/10 dark:bg-zinc-800/80">
       <p className="text-ink/50 font-mono text-[11px] tracking-widest uppercase">
         Example {index + 1}
       </p>
@@ -98,7 +98,7 @@ function LanguageSelect({ value, onChange, options }) {
         aria-expanded={open}
         aria-label="Programming language"
         onClick={() => setOpen((current) => !current)}
-        className="border-ink/15 bg-cream/90 text-ink hover:border-ink/25 hover:bg-cream dark:border-white/12 dark:bg-zinc-900/80 dark:hover:border-white/20 dark:hover:bg-zinc-900 inline-flex min-w-35 items-center justify-between gap-2 rounded-full border py-1.5 pl-3.5 pr-2.5 text-sm font-medium shadow-sm transition-[border-color,background-color,box-shadow] outline-none focus-visible:ring-2 focus-visible:ring-gold/45"
+        className="border-zinc-300/80 bg-zinc-100 text-ink hover:border-zinc-400/80 hover:bg-zinc-200/70 dark:border-white/12 dark:bg-zinc-900/80 dark:hover:border-white/20 dark:hover:bg-zinc-900 inline-flex min-w-35 items-center justify-between gap-2 rounded-full border py-1.5 pl-3.5 pr-2.5 text-sm font-medium shadow-sm transition-[border-color,background-color,box-shadow] outline-none focus-visible:ring-2 focus-visible:ring-gold/45"
       >
         <span>{selected?.label ?? 'Language'}</span>
         <ChevronDown
@@ -163,7 +163,7 @@ function ResizeHandle({ orientation = 'horizontal' }) {
 export default function ProblemSolve() {
   const { slug } = useParams()
   const navigate = useNavigate()
-  const { theme, toggleTheme } = useTheme()
+  const { theme } = useTheme()
   const isDark = theme === 'dark'
 
   const [problem, setProblem] = useState(null)
@@ -308,21 +308,9 @@ export default function ProblemSolve() {
 
   return (
     <div className="relative flex h-screen min-h-0 flex-col overflow-hidden">
-      <div
-        className="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url('${isDark ? '/dark_bg.png' : '/light_bg.jpeg'}')`,
-        }}
-      />
-      <div
-        className={
-          isDark
-            ? 'fixed inset-0 z-0 bg-black/75'
-            : 'bg-cream/75 fixed inset-0 z-0'
-        }
-      />
+      <ThemedBackdrop variant="focus" />
 
-      <header className="border-ink/10 bg-cream/70 dark:border-white/10 dark:bg-black/55 relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b px-3 py-2.5 backdrop-blur-xl sm:px-5">
+      <header className="practice-chrome relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 py-2.5 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
@@ -333,9 +321,6 @@ export default function ProblemSolve() {
             <span className="hidden sm:inline">Problems</span>
           </button>
 
-          <Link to="/" className="font-mono text-sm font-semibold tracking-tight">
-            &gt;_ Prepify
-          </Link>
         </div>
 
         <div className="flex items-center justify-center gap-2">
@@ -360,18 +345,11 @@ export default function ProblemSolve() {
         </div>
 
         <div className="flex items-center justify-end">
-          <button
-            type="button"
-            aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-            onClick={toggleTheme}
-            className="border-ink/15 text-ink/70 hover:border-ink/30 hover:text-ink flex h-9 w-9 items-center justify-center rounded-full border transition-colors"
-          >
-            {isDark ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
+          <ThemeProfileControls />
         </div>
       </header>
 
-      <div className="relative z-10 min-h-0 flex-1">
+      <div className="practice-canvas relative z-10">
         <Group
           orientation="horizontal"
           className="h-full"
@@ -386,7 +364,7 @@ export default function ProblemSolve() {
                 {loading ? (
                   <p className="text-ink/55 px-2 py-2 text-sm">Loading problem…</p>
                 ) : error ? (
-                  <div className="border-ink/10 bg-white/80 dark:border-white/12 dark:bg-zinc-800/90 max-w-lg rounded-2xl border p-6 shadow-sm">
+                  <div className="practice-panel max-w-lg rounded-2xl p-6 shadow-sm">
                     <p className="font-medium">{error}</p>
                     <button
                       type="button"
@@ -397,7 +375,7 @@ export default function ProblemSolve() {
                     </button>
                   </div>
                 ) : problem ? (
-                  <article className="border-ink/10 bg-white/80 dark:border-white/12 dark:bg-zinc-800/90 min-h-full rounded-2xl border p-5 shadow-sm">
+                  <article className="practice-panel min-h-full rounded-2xl bg-zinc-50 p-5 shadow-sm dark:bg-zinc-900/95">
                     <p className="text-ink/50 font-mono text-xs tracking-widest uppercase">
                       {'// Problem'}
                     </p>
@@ -459,8 +437,8 @@ export default function ProblemSolve() {
                 onLayoutChanged={endResize}
               >
                 <Panel defaultSize="72" minSize="30" className="min-h-0">
-                  <div className="border-ink/10 bg-white/80 dark:border-white/12 dark:bg-zinc-800/90 flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm">
-                    <div className="border-ink/10 dark:border-white/10 flex flex-wrap items-center gap-2 border-b px-3 py-2">
+                  <div className="practice-panel flex h-full min-h-0 flex-col overflow-hidden rounded-2xl bg-zinc-50 shadow-sm dark:bg-zinc-900/95">
+                    <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200/80 bg-zinc-100/90 px-3 py-2 dark:border-white/10 dark:bg-zinc-800/50">
                       <LanguageSelect
                         value={language}
                         onChange={setLanguage}

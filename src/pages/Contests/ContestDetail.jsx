@@ -12,11 +12,9 @@ import {
   useUntilStart,
 } from './hooks/useServerCountdown.js'
 import JoinCodeModal from './components/JoinCodeModal.jsx'
-
-function formatWhen(value) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString()
-}
+import ContestRegisterJoinButtons from './components/ContestRegisterJoinButtons.jsx'
+import { formatContestScheduleRange } from './utils/contestDateTime.js'
+import { buildLoginUrl } from '../../utils/authRedirect.js'
 
 export default function ContestDetail() {
   const { id } = useParams()
@@ -138,7 +136,7 @@ export default function ContestDetail() {
 
   function handleRegisterClick() {
     if (!isAuthenticated) {
-      navigate('/login')
+      navigate(buildLoginUrl(`/contests/${id}`))
       return
     }
     if (contest?.requiresJoinCode) {
@@ -214,6 +212,30 @@ export default function ContestDetail() {
           This is a private contest — you need a join code from the host to register.
         </p>
       ) : null}
+      {!contest.registered && !contest.canRegister && contest.status !== 'completed' ? (
+        <p className="text-amber-800/90 mt-2 text-sm dark:text-amber-200">
+          Registration is only open before the contest starts.
+        </p>
+      ) : null}
+      {contest.registered &&
+      contest.roomLocked &&
+      contest.status === 'live' &&
+      !contest.isHost ? (
+        <p className="text-ink/55 mt-2 text-sm">
+          Your attempt is closed — you cannot re-enter the contest room.
+        </p>
+      ) : null}
+      {contest.closedReason === 'stopped' ? (
+        <p className="mt-2 rounded-xl bg-amber-500/12 px-4 py-2 text-sm text-amber-950 dark:text-amber-100">
+          This contest was ended early by the host.
+        </p>
+      ) : null}
+      {contest.isHost && contest.canEnterRoom ? (
+        <p className="text-ink/55 mt-2 text-sm">
+          As host, you can open the contest room before and during the event to
+          preview questions.
+        </p>
+      ) : null}
       {contest.hostName ? (
         <p className="text-ink/50 mt-1 text-sm">Hosted by {contest.hostName}</p>
       ) : null}
@@ -243,19 +265,20 @@ export default function ContestDetail() {
         {contest.description || 'No description yet.'}
       </p>
 
-      <div className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 mt-6 rounded-2xl border p-5 backdrop-blur-md">
+      <div className="dashboard-panel mt-6 rounded-2xl p-5">
         <p className="text-ink/50 font-mono text-[11px] tracking-widest uppercase">
           Schedule
         </p>
-        <p className="mt-2 text-sm">{formatWhen(contest.startTime)}</p>
-        <p className="text-sm">{formatWhen(contest.endTime)}</p>
+        <p className="mt-2 text-sm">
+          {formatContestScheduleRange(contest.startTime, contest.endTime)}
+        </p>
         <p className="text-ink/50 mt-3 text-xs">
           {contest.participantCount ?? 0} participants
         </p>
       </div>
 
       {contest.rules ? (
-        <div className="border-ink/10 mt-4 rounded-2xl border p-5 text-sm whitespace-pre-wrap">
+        <div className="border-ink/10 mt-4 rounded-2xl p-5 text-sm whitespace-pre-wrap">
           <p className="text-ink/50 font-mono text-[11px] tracking-widest uppercase">
             Rules
           </p>
@@ -264,7 +287,7 @@ export default function ContestDetail() {
       ) : null}
 
       {contest.status === 'completed' && myResults?.resultsVisible ? (
-        <div className="border-ink/10 mt-4 rounded-2xl border p-5 text-sm">
+        <div className="border-ink/10 mt-4 rounded-2xl p-5 text-sm">
           <p className="text-ink/50 font-mono text-[11px] tracking-widest uppercase">
             Your results
           </p>
@@ -308,7 +331,7 @@ export default function ContestDetail() {
       ) : null}
 
       {contest.isHost ? (
-        <div className="border-ink/10 mt-4 rounded-2xl border p-4 text-sm">
+        <div className="border-ink/10 mt-4 rounded-2xl p-4 text-sm">
           <p className="font-medium">You are hosting this contest</p>
           <Link
             to={`/contests/manage/${id}`}
@@ -320,7 +343,7 @@ export default function ContestDetail() {
       ) : null}
 
       {contest.isHost && contest.visibility === 'private' ? (
-        <div className="border-ink/10 mt-4 rounded-2xl border p-4 text-sm">
+        <div className="border-ink/10 mt-4 rounded-2xl p-4 text-sm">
           <p className="font-medium">Host tools</p>
           <p className="text-ink/60 mt-1 text-xs">
             Regenerate join code if the old one was leaked. Previous codes stop working.
@@ -339,30 +362,14 @@ export default function ContestDetail() {
         </div>
       ) : null}
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {!contest.registered &&
-        (contest.status === 'upcoming' || contest.status === 'live') ? (
-          <button
-            type="button"
-            onClick={handleRegisterClick}
-            disabled={registering}
-            className="bg-ink text-cream rounded-full px-5 py-2 text-sm font-medium disabled:opacity-50 dark:bg-gold dark:text-black"
-          >
-            {registering
-              ? 'Registering…'
-              : contest.requiresJoinCode
-                ? 'Register with code'
-                : 'Register'}
-          </button>
-        ) : null}
-        {contest.registered && contest.status === 'live' ? (
-          <Link
-            to={`/contests/${id}/room`}
-            className="bg-ink text-cream rounded-full px-5 py-2 text-sm font-medium dark:bg-gold dark:text-black"
-          >
-            Enter contest room
-          </Link>
-        ) : null}
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <ContestRegisterJoinButtons
+          contest={contest}
+          token={token}
+          isAuthenticated={isAuthenticated}
+          size="md"
+          onUpdated={() => loadContestPage({ silent: true })}
+        />
         {contest.status === 'completed' ? (
           <Link
             to={`/contests/${id}/leaderboard`}

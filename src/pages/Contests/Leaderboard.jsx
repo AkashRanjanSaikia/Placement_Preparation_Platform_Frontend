@@ -82,7 +82,7 @@ export default function Leaderboard() {
       {error ? <p className="mt-6 text-sm text-rose-600">{error}</p> : null}
 
       {!loading && !error ? (
-        <div className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 mt-6 overflow-x-auto rounded-2xl border backdrop-blur-md">
+        <div className="dashboard-panel mt-6 overflow-x-auto rounded-2xl">
           <div
             className="grid min-w-[32rem] gap-2 border-b border-ink/10 px-4 py-3 font-mono text-[10px] tracking-widest uppercase dark:border-white/10 sm:px-5 sm:text-[11px]"
             style={gridStyle}

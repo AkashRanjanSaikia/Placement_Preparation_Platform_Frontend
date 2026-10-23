@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   finalizeContestExam,
   getContestAttempt,
+  getContestLiveState,
   getMyContestSubmissions,
+  lockContestRoom,
   runContestDsaCode,
   saveContestAnswer,
 } from './api/contestApi.js'
@@ -14,6 +16,7 @@ import ContestDsaExample from './components/ContestDsaExample.jsx'
 import ContestDsaEditor from './components/ContestDsaEditor.jsx'
 import ContestQuestionNav from './components/ContestQuestionNav.jsx'
 import ContestRoomCountdown from './components/ContestRoomCountdown.jsx'
+import ContestRoomShell from './components/ContestRoomShell.jsx'
 import OutputPanel from '../DSA/OutputPanel.jsx'
 
 function starterCodeByLanguage(starterCode = []) {
@@ -39,6 +42,8 @@ export default function ContestRoom() {
   const { theme } = useTheme()
   const [attempt, setAttempt] = useState(null)
   const [serverTime, setServerTime] = useState(null)
+  const [syncedEndTime, setSyncedEndTime] = useState(null)
+  const [roomClosedNotice, setRoomClosedNotice] = useState('')
   const [answers, setAnswers] = useState([])
   const [activeIndex, setActiveIndex] = useState(0)
   const [languageKey, setLanguageKey] = useState('python')
@@ -63,8 +68,11 @@ export default function ContestRoom() {
     selectedIndex: null,
     languageKey: 'python',
   })
+  const isHostPreview = Boolean(attempt?.isHostPreview)
   const examFinalized = Boolean(attempt?.examFinalized)
-  const readOnly = examFinalized || false
+  const readOnly = examFinalized || isHostPreview
+  const attemptOpenRef = useRef(false)
+  const finalizedRef = useRef(false)
 
   const handleTimeExpiredChange = useCallback((expired) => {
     setTimeExpired(expired)
@@ -112,9 +120,13 @@ export default function ContestRoom() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setFeedback(
-            err?.response?.data?.message ?? 'Could not open contest room',
-          )
+          const code = err?.response?.data?.code
+          const msg = err?.response?.data?.message
+          if (code === 'CONTEST_REMOVED' || code === 'CONTEST_STOPPED') {
+            setRoomClosedNotice(msg ?? 'This contest is no longer available.')
+          } else {
+            setFeedback(msg ?? 'Could not open contest room')
+          }
         }
       })
       .finally(() => {
@@ -125,6 +137,93 @@ export default function ContestRoom() {
       cancelled = true
     }
   }, [id, token])
+
+  useEffect(() => {
+    finalizedRef.current = examFinalized
+  }, [examFinalized])
+
+  useEffect(() => {
+    if (attempt) attemptOpenRef.current = true
+  }, [attempt])
+
+  useEffect(() => {
+    if (!token || !id || isHostPreview || !attempt || examFinalized) return
+
+    let cancelled = false
+
+    async function syncLiveState() {
+      try {
+        const payload = await getContestLiveState(id, token)
+        if (cancelled) return
+        const data = payload?.data
+        if (payload?.serverTime) setServerTime(payload.serverTime)
+        if (data?.endTime) setSyncedEndTime(data.endTime)
+        if (data?.closedReason === 'stopped') {
+          setRoomClosedNotice('The host ended this contest. Your attempt was saved.')
+          setTimeExpired(true)
+          const submissionPayload = await getMyContestSubmissions(id, token)
+          if (!cancelled) {
+            setAnswers(submissionPayload?.data ?? [])
+            if (submissionPayload?.examFinalized) {
+              setAttempt((current) =>
+                current
+                  ? {
+                      ...current,
+                      examFinalized: true,
+                      endTime: data.endTime ?? current.endTime,
+                    }
+                  : current,
+              )
+            }
+          }
+        }
+      } catch (err) {
+        if (cancelled) return
+        if (err?.response?.status === 410) {
+          setRoomClosedNotice(
+            err?.response?.data?.message ??
+              'This contest was removed by the host.',
+          )
+          setAttempt(null)
+          attemptOpenRef.current = false
+        }
+      }
+    }
+
+    syncLiveState()
+    const intervalId = window.setInterval(syncLiveState, 5000)
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [attempt, examFinalized, id, isHostPreview, token])
+
+  useEffect(() => {
+    return () => {
+      if (
+        attemptOpenRef.current &&
+        !finalizedRef.current &&
+        !isHostPreview &&
+        token &&
+        id
+      ) {
+        lockContestRoom(id, token).catch(() => {})
+      }
+    }
+  }, [id, token, isHostPreview])
+
+  const leaveRoom = useCallback(async () => {
+    if (
+      !finalizedRef.current &&
+      attemptOpenRef.current &&
+      !attempt?.isHostPreview &&
+      token
+    ) {
+      await lockContestRoom(id, token).catch(() => {})
+      attemptOpenRef.current = false
+    }
+    navigate(`/contests/${id}`)
+  }, [attempt?.isHostPreview, id, navigate, token])
 
   useEffect(() => {
     if (!active || loading) return
@@ -356,11 +455,12 @@ export default function ContestRoom() {
           ? dsaPayload
           : mcqPayload ?? {}
       await finalizeContestExam(id, token, finalizeBody)
-      const attemptPayload = await getContestAttempt(id, token)
-      setAttempt(attemptPayload?.data ?? null)
-      setFeedback(
-        'Exam submitted. Results will be available after the contest ends.',
-      )
+      finalizedRef.current = true
+      attemptOpenRef.current = false
+      navigate(`/contests/${id}`, {
+        state: { contestMessage: 'Exam submitted. You cannot re-enter the room.' },
+      })
+      return
     } catch (err) {
       setFeedback(err?.response?.data?.message ?? 'Could not submit exam')
     } finally {
@@ -369,33 +469,50 @@ export default function ContestRoom() {
   }
 
   if (loading) {
-    return <p className="text-ink/50 text-sm">Loading contest room…</p>
+    return (
+      <ContestRoomShell contestId={id}>
+        <p className="text-ink/50 text-sm">Loading contest room…</p>
+      </ContestRoomShell>
+    )
   }
 
   if (!attempt) {
     return (
-      <div>
-        <p className="text-sm text-rose-600">{feedback || 'Room unavailable'}</p>
+      <ContestRoomShell contestId={id}>
+        <p className="text-sm text-rose-600">
+          {roomClosedNotice || feedback || 'Room unavailable'}
+        </p>
         <Link to={`/contests/${id}`} className="mt-4 inline-block text-sm underline">
           Back to contest
         </Link>
-      </div>
+      </ContestRoomShell>
     )
   }
 
-  if (attempt.status !== 'live' && !examFinalized) {
+  if (!isHostPreview && attempt.status !== 'live' && !examFinalized) {
     return (
-      <div>
+      <ContestRoomShell contestId={id} title={attempt.title}>
         <p className="text-sm">This contest is not live right now.</p>
         <Link to={`/contests/${id}`} className="mt-4 inline-block text-sm underline">
           Back to contest
         </Link>
-      </div>
+      </ContestRoomShell>
     )
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+    <ContestRoomShell
+      contestId={id}
+      title={attempt.title}
+      onBackToContest={leaveRoom}
+    >
+    <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[260px_1fr]">
+      {isHostPreview ? (
+        <p className="text-ink/60 lg:col-span-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2 text-sm">
+          Host preview — you can browse questions before and during the contest.
+          Answers are not submitted from this view.
+        </p>
+      ) : null}
       <ContestQuestionNav
         flatQuestions={flatQuestions}
         answerByKey={answerByKey}
@@ -404,16 +521,21 @@ export default function ContestRoom() {
         onSelect={goToIndex}
       />
 
-      <section className="border-ink/10 bg-white/90 dark:border-white/10 dark:bg-zinc-950/90 rounded-2xl border p-6">
+      <section className="practice-panel rounded-2xl p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold">{attempt.title}</h1>
             <ContestRoomCountdown
-              endTime={attempt.endTime}
+              endTime={syncedEndTime ?? attempt.endTime}
               serverTime={serverTime}
               examFinalized={examFinalized}
               onTimeExpiredChange={handleTimeExpiredChange}
             />
+            {roomClosedNotice ? (
+              <p className="text-amber-900/90 mt-2 rounded-lg bg-amber-500/15 px-3 py-2 text-sm dark:text-amber-100">
+                {roomClosedNotice}
+              </p>
+            ) : null}
             {examFinalized ? (
               <p className="text-ink/60 mt-1 text-xs">
                 Submitted — you can review answers until the contest ends. Scores
@@ -426,9 +548,6 @@ export default function ContestRoom() {
               </p>
             )}
           </div>
-          <Link to={`/contests/${id}`} className="text-sm underline">
-            Exit
-          </Link>
         </div>
 
         {active ? (
@@ -581,7 +700,7 @@ export default function ContestRoom() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => navigate(`/contests/${id}`)}
+                    onClick={leaveRoom}
                     className="border-ink/15 rounded-full border px-5 py-2 text-sm"
                   >
                     Back to contest
@@ -598,5 +717,6 @@ export default function ContestRoom() {
         {feedback ? <p className="text-ink/60 mt-4 text-sm">{feedback}</p> : null}
       </section>
     </div>
+    </ContestRoomShell>
   )
 }

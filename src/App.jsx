@@ -1,5 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import DashboardLayout from './layouts/DashboardLayout.jsx'
+import RequireAuth from './components/RequireAuth.jsx'
+import GuestOnlyRoute from './components/GuestOnlyRoute.jsx'
 import Home from './pages/Home.jsx'
 import ProblemSolve from './pages/DSA/ProblemSolve.jsx'
 import DsaPage from './pages/DSA/DsaPage.jsx'
@@ -21,26 +23,30 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
+      <Route element={<GuestOnlyRoute />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+      </Route>
       <Route path="/admin/contest/create" element={<CreateContest mode="admin" />} />
-      <Route path="/dsa-practice/:slug" element={<ProblemSolve />} />
-      <Route path="/aptitude/:setId" element={<AptitudeSolve />} />
-      <Route path="/cs-core/:setId" element={<CSCoreSolve />} />
 
-      <Route element={<DashboardLayout />}>
-        {/* <Route index element={<UserProfile />} />  yet to implement */}
-        <Route path="dsa-practice" element={<DsaPage />} />
-        <Route path="cs-core" element={<CSCorePage />} />
-        <Route path="interview" element={<InterviewPage />} />
-        <Route path="aptitude" element={<AptitudePage />} />
-        <Route path="contests" element={<ContestList />} />
-        <Route path="contests/create" element={<CreateContest mode="host" />} />
-        <Route path="contests/edit/:draftId" element={<CreateContest mode="host" />} />
-        <Route path="contests/manage/:id" element={<HostContestManage />} />
-        <Route path="contests/:id" element={<ContestDetail />} />
-        <Route path="contests/:id/room" element={<ContestRoom />} />
-        <Route path="contests/:id/leaderboard" element={<Leaderboard />} />
+      <Route element={<RequireAuth />}>
+        <Route path="/dsa-practice/:slug" element={<ProblemSolve />} />
+        <Route path="/aptitude/:setId" element={<AptitudeSolve />} />
+        <Route path="/cs-core/:setId" element={<CSCoreSolve />} />
+        <Route path="/contests/:id/room" element={<ContestRoom />} />
+
+        <Route element={<DashboardLayout />}>
+          <Route path="dsa-practice" element={<DsaPage />} />
+          <Route path="cs-core" element={<CSCorePage />} />
+          <Route path="interview" element={<InterviewPage />} />
+          <Route path="aptitude" element={<AptitudePage />} />
+          <Route path="contests" element={<ContestList />} />
+          <Route path="contests/create" element={<CreateContest mode="host" />} />
+          <Route path="contests/edit/:draftId" element={<CreateContest mode="host" />} />
+          <Route path="contests/manage/:id" element={<HostContestManage />} />
+          <Route path="contests/:id" element={<ContestDetail />} />
+          <Route path="contests/:id/leaderboard" element={<Leaderboard />} />
+        </Route>
       </Route>
     </Routes>
   )

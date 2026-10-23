@@ -1,35 +1,28 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  deleteHostContestDraft,
+  deleteHostContest,
   getHostContest,
   publishContest,
   regenerateJoinCode,
+  stopHostContest,
 } from './api/contestApi.js'
+import HostContestDangerActions from './components/HostContestDangerActions.jsx'
 import { useAuth } from '../../context/AuthProvider.jsx'
 import PublishSuccessPanel from './components/PublishSuccessPanel.jsx'
 
-function formatWhen(value) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString()
-}
+import { formatContestScheduleRange } from './utils/contestDateTime.js'
 
 export default function HostContestManage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { token, isAuthenticated } = useAuth()
+  const { token } = useAuth()
   const [contest, setContest] = useState(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [publishedMeta, setPublishedMeta] = useState(null)
   const [newJoinCode, setNewJoinCode] = useState(null)
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login', { replace: true })
-    }
-  }, [isAuthenticated, navigate])
 
   useEffect(() => {
     if (!token) return
@@ -71,12 +64,39 @@ export default function HostContestManage() {
     }
   }
 
-  async function handleDelete() {
+  async function handleDeleteDraft() {
     if (!window.confirm('Delete this draft permanently?')) return
     setBusy(true)
     setMessage('')
     try {
-      await deleteHostContestDraft(id, token)
+      await deleteHostContest(id, token)
+      navigate('/contests', { replace: true })
+    } catch (err) {
+      setMessage(err?.response?.data?.message ?? 'Delete failed')
+      setBusy(false)
+    }
+  }
+
+  async function handleStopContest() {
+    setBusy(true)
+    setMessage('')
+    try {
+      await stopHostContest(id, token)
+      const refreshed = await getHostContest(id, token)
+      setContest(refreshed?.data ?? null)
+      setMessage('Contest stopped. Participants have been closed out safely.')
+    } catch (err) {
+      setMessage(err?.response?.data?.message ?? 'Could not stop contest')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleDeletePublished(confirmTitle) {
+    setBusy(true)
+    setMessage('')
+    try {
+      await deleteHostContest(id, token, { confirmTitle })
       navigate('/contests', { replace: true })
     } catch (err) {
       setMessage(err?.response?.data?.message ?? 'Delete failed')
@@ -138,10 +158,10 @@ export default function HostContestManage() {
 
       <p className="text-ink/60 mt-2 text-sm">Host dashboard</p>
 
-      <div className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 mt-6 space-y-3 rounded-2xl border p-5 text-sm backdrop-blur-md">
+      <div className="dashboard-panel mt-6 space-y-3 rounded-2xl p-5 text-sm">
         <p>
           <span className="text-ink/50">Schedule:</span>{' '}
-          {formatWhen(contest.startTime)} → {formatWhen(contest.endTime)}
+          {formatContestScheduleRange(contest.startTime, contest.endTime)}
         </p>
         <p>
           <span className="text-ink/50">Sections:</span> {contest.sectionCount} ·{' '}
@@ -186,7 +206,7 @@ export default function HostContestManage() {
             </button>
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={handleDeleteDraft}
               disabled={busy}
               className="text-sm text-rose-600 disabled:opacity-50"
             >
@@ -233,6 +253,13 @@ export default function HostContestManage() {
       {newJoinCode ? (
         <p className="mt-4 font-mono text-lg tracking-widest">{newJoinCode}</p>
       ) : null}
+
+      <HostContestDangerActions
+        contest={contest}
+        busy={busy}
+        onStop={handleStopContest}
+        onDelete={handleDeletePublished}
+      />
 
       {message ? <p className="text-ink/60 mt-4 text-sm">{message}</p> : null}
     </div>

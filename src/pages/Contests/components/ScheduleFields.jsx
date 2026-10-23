@@ -1,6 +1,7 @@
 import {
   addHoursToLocalStart,
   fromDatetimeLocalValue,
+  isSameContestCalendarDay,
   toDatetimeLocalValue,
 } from '../utils/contestDateTime.js'
 
@@ -21,6 +22,8 @@ export default function ScheduleFields({
   const endIso = fromDatetimeLocalValue(endLocal)
   const invalidRange =
     startIso && endIso && new Date(endIso) <= new Date(startIso)
+  const differentDay =
+    startIso && endIso && !invalidRange && !isSameContestCalendarDay(startIso, endIso)
 
   return (
     <div className="space-y-4">
@@ -66,6 +69,11 @@ export default function ScheduleFields({
       {invalidRange ? (
         <p className="text-sm text-rose-600">End time must be after start time.</p>
       ) : null}
+      {differentDay ? (
+        <p className="text-sm text-rose-600">
+          Start and end must be on the same calendar day (single-day contest only).
+        </p>
+      ) : null}
 
       <label className="block text-sm">
         <span className="text-ink/50 text-xs font-medium uppercase tracking-wide">
@@ -85,7 +93,7 @@ export default function ScheduleFields({
         />
       </label>
 
-      {startIso && endIso && !invalidRange ? (
+      {startIso && endIso && !invalidRange && !differentDay ? (
         <p className="text-ink/45 font-mono text-[11px]">
           Stored as UTC: {new Date(startIso).toISOString()} →{' '}
           {new Date(endIso).toISOString()}

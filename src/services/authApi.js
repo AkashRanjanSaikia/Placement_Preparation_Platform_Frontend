@@ -38,3 +38,14 @@ export async function loginUser({ email, password }) {
     throw new Error(getErrorMessage(error, 'Login failed. Please try again.'))
   }
 }
+
+export async function fetchCurrentUser(token) {
+  try {
+    const res = await axios.get(`${backendUrl}/auth/me`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+    return res.data
+  } catch (error) {
+    throw new Error(getErrorMessage(error, 'Session expired. Please log in again.'))
+  }
+}

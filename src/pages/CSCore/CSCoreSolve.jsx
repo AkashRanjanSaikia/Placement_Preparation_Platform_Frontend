@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Moon, Sun } from 'lucide-react'
-import { useTheme } from '../../context/ThemeProvider.jsx'
+import PracticeSolveShell from '../../layouts/PracticeSolveShell.jsx'
 import {
   checkQuestionAnswer,
   fetchQuestionPage,
@@ -24,9 +23,6 @@ export default function CSCoreSolve() {
   const { setId } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { theme, toggleTheme } = useTheme()
-  const isDark = theme === 'dark'
-
   const match = useMemo(() => findCsCorePractice(setId), [setId])
 
   const initialDifficulty = parseDifficultyParam(searchParams.get('difficulty'))
@@ -125,17 +121,19 @@ export default function CSCoreSolve() {
 
   if (!match) {
     return (
-      <SolveShell isDark={isDark} toggleTheme={toggleTheme} onBack={() => navigate('/cs-core')}>
+      <PracticeSolveShell
+        backLabel="CS Fundamentals"
+        onBack={() => navigate('/cs-core')}
+      >
         <p className="text-ink/70 text-sm">This practice topic was not found.</p>
-      </SolveShell>
+      </PracticeSolveShell>
     )
   }
 
   if (!loading && (loadError || totalQuestions === 0)) {
     return (
-      <SolveShell
-        isDark={isDark}
-        toggleTheme={toggleTheme}
+      <PracticeSolveShell
+        backLabel="CS Fundamentals"
         title={match.title}
         subtitle={match.subjectTitle}
         onBack={() => navigate('/cs-core')}
@@ -147,7 +145,7 @@ export default function CSCoreSolve() {
               ? 'Questions for this topic are coming soon.'
               : `No ${difficulty} questions in this topic. Try All.`}
         </p>
-      </SolveShell>
+      </PracticeSolveShell>
     )
   }
 
@@ -164,9 +162,8 @@ export default function CSCoreSolve() {
       : match.subjectTitle
 
   return (
-    <SolveShell
-      isDark={isDark}
-      toggleTheme={toggleTheme}
+    <PracticeSolveShell
+      backLabel="CS Fundamentals"
       title={match.title}
       subtitle={subtitle}
       onBack={() => navigate('/cs-core')}
@@ -221,7 +218,7 @@ export default function CSCoreSolve() {
               return (
                 <li
                   key={question._id}
-                  className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 rounded-2xl border p-5 backdrop-blur-md sm:p-6"
+                  className="practice-panel rounded-2xl p-5 shadow-sm sm:p-6"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-ink/45 font-mono text-[11px] tracking-widest uppercase">
@@ -321,66 +318,6 @@ export default function CSCoreSolve() {
           ) : null}
         </>
       )}
-    </SolveShell>
-  )
-}
-
-function SolveShell({
-  isDark,
-  toggleTheme,
-  title,
-  subtitle,
-  onBack,
-  children,
-}) {
-  return (
-    <div className="relative flex min-h-screen flex-col">
-      <div
-        className="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url('${isDark ? '/dark_bg.png' : '/light_bg.jpeg'}')`,
-        }}
-      />
-      <div
-        className={
-          isDark
-            ? 'fixed inset-0 z-0 bg-black/75'
-            : 'bg-cream/75 fixed inset-0 z-0'
-        }
-      />
-
-      <header className="border-ink/10 bg-cream/70 dark:border-white/10 dark:bg-black/55 relative z-10 flex items-center justify-between gap-3 border-b px-4 py-3 backdrop-blur-xl sm:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            className="border-ink/15 text-ink/70 hover:border-ink/30 hover:text-ink flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm"
-          >
-            <ArrowLeft size={16} />
-            CS Fundamentals
-          </button>
-          {title ? (
-            <div className="min-w-0">
-              <p className="truncate font-medium">{title}</p>
-              {subtitle ? (
-                <p className="text-ink/50 truncate text-xs">{subtitle}</p>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-          onClick={toggleTheme}
-          className="border-ink/15 text-ink/70 hover:border-ink/30 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border"
-        >
-          {isDark ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
-      </header>
-
-      <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 p-4 sm:p-8">
-        {children}
-      </main>
-    </div>
+    </PracticeSolveShell>
   )
 }

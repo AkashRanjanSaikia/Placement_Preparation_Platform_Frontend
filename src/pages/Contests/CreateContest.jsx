@@ -20,6 +20,8 @@ import {
 import {
   defaultContestSchedule,
   formatLocalRange,
+  isSameContestCalendarDay,
+  scheduleTimezoneOffsetForApi,
 } from './utils/contestDateTime.js'
 import { useAuth } from '../../context/AuthProvider.jsx'
 
@@ -28,7 +30,7 @@ const STEPS = ['Details', 'Sections', 'Review']
 export default function CreateContest({ mode = 'host' }) {
   const isHost = mode === 'host'
   const { draftId: draftIdParam } = useParams()
-  const { token, isAuthenticated } = useAuth()
+  const { token } = useAuth()
   const navigate = useNavigate()
   const { start, end } = defaultContestSchedule()
   const [loadingDraft, setLoadingDraft] = useState(Boolean(draftIdParam && isHost))
@@ -45,12 +47,6 @@ export default function CreateContest({ mode = 'host' }) {
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [publishedMeta, setPublishedMeta] = useState(null)
-
-  useEffect(() => {
-    if (isHost && !isAuthenticated) {
-      navigate('/login', { replace: true })
-    }
-  }, [isHost, isAuthenticated, navigate])
 
   useEffect(() => {
     if (!isHost || !draftIdParam || !token) return
@@ -90,7 +86,10 @@ export default function CreateContest({ mode = 'host' }) {
   const startIso = fromDatetimeLocalValue(startLocal)
   const endIso = fromDatetimeLocalValue(endLocal)
   const timesValid =
-    startIso && endIso && new Date(endIso) > new Date(startIso)
+    startIso &&
+    endIso &&
+    new Date(endIso) > new Date(startIso) &&
+    isSameContestCalendarDay(startIso, endIso)
 
   const totalQuestions = sections.reduce(
     (sum, s) => sum + countSectionQuestions(s),
@@ -107,8 +106,12 @@ export default function CreateContest({ mode = 'host' }) {
         setMessage('Title is required')
         return false
       }
-      if (!timesValid) {
-        setMessage('Fix start and end times')
+      if (!startIso || !endIso || new Date(endIso) <= new Date(startIso)) {
+        setMessage('End time must be after start time')
+        return false
+      }
+      if (!isSameContestCalendarDay(startIso, endIso)) {
+        setMessage('Contest must start and end on the same calendar day')
         return false
       }
     }
@@ -143,6 +146,7 @@ export default function CreateContest({ mode = 'host' }) {
       rules,
       startTime: startIso,
       endTime: endIso,
+      scheduleTimezoneOffset: scheduleTimezoneOffsetForApi(),
       maxParticipants,
       visibility: isHost ? visibility : 'public',
       sections: buildSectionsApiPayload(sections),
@@ -235,7 +239,7 @@ export default function CreateContest({ mode = 'host' }) {
         ))}
       </ol>
 
-      <div className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 mt-6 rounded-2xl border p-6 backdrop-blur-md">
+      <div className="dashboard-panel mt-6 rounded-2xl p-6">
         {step === 0 ? (
           <div className="space-y-4">
             <input

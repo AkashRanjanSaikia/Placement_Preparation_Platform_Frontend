@@ -31,7 +31,7 @@ export default function AdminPasscodeGate({ children }) {
   }
 
   return (
-    <div className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 mx-auto mt-16 max-w-md rounded-2xl border p-8 backdrop-blur-md">
+    <div className="dashboard-panel mx-auto mt-16 max-w-md rounded-2xl p-8">
       <p className="text-ink/50 font-mono text-xs tracking-widest uppercase">
         // Admin access
       </p>

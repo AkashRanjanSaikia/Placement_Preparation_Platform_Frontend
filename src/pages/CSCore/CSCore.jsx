@@ -20,7 +20,30 @@ const difficultyStyles = {
   Mixed: 'bg-sky-500/12 text-sky-800 dark:text-sky-200',
 }
 
-function filterSets(sets, query, difficulty, topicCounts, topicDifficultyCounts) {
+function questionMatchesDifficulty(questionDifficulty, difficultyFilter) {
+  if (difficultyFilter === 'All') return true
+  const key = String(questionDifficulty ?? 'medium').toLowerCase()
+  const labels = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
+  return (labels[key] ?? 'Medium') === difficultyFilter
+}
+
+function topicHasMatchingQuestion(topicId, query, difficulty, questionsByTopic) {
+  if (!query || !topicId) return false
+  const list = questionsByTopic?.[topicId] ?? []
+  return list.some((item) => {
+    const text = item.questionText?.toLowerCase() ?? ''
+    return text.includes(query) && questionMatchesDifficulty(item.difficulty, difficulty)
+  })
+}
+
+function filterSets(
+  sets,
+  query,
+  difficulty,
+  topicCounts,
+  topicDifficultyCounts,
+  questionsByTopic,
+) {
   const list = Array.isArray(sets) ? sets : []
   const normalizedQuery = query.trim().toLowerCase()
 
@@ -36,7 +59,12 @@ function filterSets(sets, query, difficulty, topicCounts, topicDifficultyCounts)
     const matchesSearch =
       !normalizedQuery ||
       set.title?.toLowerCase().includes(normalizedQuery) ||
-      set.tags?.some((tag) => tag.toLowerCase().includes(normalizedQuery))
+      topicHasMatchingQuestion(
+        set.id,
+        normalizedQuery,
+        difficulty,
+        questionsByTopic,
+      )
 
     return matchesDifficulty && matchesSearch
   })
@@ -57,6 +85,7 @@ export default function CSCorePage() {
   const [openSectionIds, setOpenSectionIds] = useState(() => new Set())
   const [topicCounts, setTopicCounts] = useState({})
   const [topicDifficultyCounts, setTopicDifficultyCounts] = useState({})
+  const [questionsByTopic, setQuestionsByTopic] = useState({})
   const [countsLoading, setCountsLoading] = useState(true)
 
   const toggleSection = (sectionId) => {
@@ -90,10 +119,15 @@ export default function CSCorePage() {
             ? data.topicDifficultyCounts
             : {},
         )
+        const byTopic = data?.questionsByTopic
+        setQuestionsByTopic(
+          byTopic && typeof byTopic === 'object' ? byTopic : {},
+        )
       } catch {
         if (!cancelled) {
           setTopicCounts({})
           setTopicDifficultyCounts({})
+          setQuestionsByTopic({})
         }
       } finally {
         if (!cancelled) setCountsLoading(false)
@@ -118,31 +152,25 @@ export default function CSCorePage() {
           difficulty,
           topicCounts,
           topicDifficultyCounts,
+          questionsByTopic,
         )
-        const sectionMatchesQuery =
-          query &&
-          (section.title?.toLowerCase().includes(query) ||
-            section.description?.toLowerCase().includes(query))
-
-        if (query && sets.length === 0 && !sectionMatchesQuery) {
-          return null
-        }
-
-        return {
-          ...section,
-          sets: sectionMatchesQuery && sets.length === 0
-            ? filterSets(
-                section.sets,
-                '',
-                difficulty,
-                topicCounts,
-                topicDifficultyCounts,
-              )
-            : sets,
-        }
+        if (query && sets.length === 0) return null
+        return { ...section, sets }
       })
       .filter(Boolean)
-  }, [search, difficulty, topicCounts, topicDifficultyCounts])
+  }, [search, difficulty, topicCounts, topicDifficultyCounts, questionsByTopic])
+
+  useEffect(() => {
+    const query = (search ?? '').trim()
+    if (!query) return
+    setOpenSectionIds((current) => {
+      const next = new Set(current)
+      for (const section of sections) {
+        if (section.sets.length > 0) next.add(section.id)
+      }
+      return next
+    })
+  }, [search, sections])
 
   const totalSets = sections.reduce((sum, section) => sum + section.sets.length, 0)
   const mixedCount = getMixedPracticeCount(
@@ -184,7 +212,7 @@ export default function CSCorePage() {
         {mixedCount > 0 || countsLoading ? (
           <Link
             to={practiceHref(ALL_TOPICS_ID, difficulty)}
-            className="border-ink/10 bg-white/65 hover:border-gold/45 dark:border-white/10 dark:bg-black/50 inline-flex flex-wrap items-center gap-3 rounded-2xl border px-5 py-3 backdrop-blur-md transition-colors"
+            className="dashboard-panel hover:border-gold/45 inline-flex flex-wrap items-center gap-3 rounded-2xl px-5 py-3 transition-colors"
           >
             <span className="font-medium">
               {csCoreData.mixedPractice?.title ?? 'All Topics'} — mixed practice
@@ -203,7 +231,9 @@ export default function CSCorePage() {
 
       {totalSets === 0 ? (
         <p className="text-ink/55 mt-8 text-center text-sm">
-          No topics match your filters.
+          {(search ?? '').trim()
+            ? 'No questions match your search.'
+            : 'No topics match your filters.'}
         </p>
       ) : (
         <div className="mt-8 flex flex-col gap-10">
@@ -256,7 +286,7 @@ export default function CSCorePage() {
                   }`}
                 >
               <div
-                className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 overflow-hidden rounded-2xl border backdrop-blur-md"
+                className="dashboard-panel overflow-hidden rounded-2xl"
               >
                 <div className="text-ink/45 hidden grid-cols-[1fr_6rem_8rem] gap-3 border-b border-ink/10 px-5 py-3 font-mono text-[11px] tracking-widest uppercase md:grid dark:border-white/10">
                   <span>Topic</span>

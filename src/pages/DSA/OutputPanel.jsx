@@ -130,8 +130,8 @@ function CaseTab({ index, verdict, selected, onSelect }) {
       onClick={onSelect}
       className={
         selected
-          ? 'border-ink/15 bg-ink/8 dark:border-white/15 dark:bg-white/10 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium'
-          : 'text-ink/55 hover:bg-ink/5 dark:hover:bg-white/5 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors'
+          ? 'border-zinc-300/80 bg-zinc-200/70 dark:border-white/15 dark:bg-white/10 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium'
+          : 'text-ink/55 hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors'
       }
     >
       <Icon size={14} className={iconClass} strokeWidth={2.5} />
@@ -150,7 +150,7 @@ function DetailBlock({ label, value, highlight }) {
         className={
           highlight
             ? 'border-rose-500/30 bg-rose-500/8 dark:border-rose-400/25 dark:bg-rose-500/10 rounded-lg border px-3 py-2'
-            : 'border-ink/10 bg-ink/4 dark:border-white/10 dark:bg-black/25 rounded-lg border px-3 py-2'
+            : 'rounded-lg border border-zinc-200/80 bg-zinc-100 px-3 py-2 dark:border-white/10 dark:bg-zinc-800/80'
         }
       >
         <pre className="text-ink/85 font-mono text-xs leading-relaxed whitespace-pre-wrap">
@@ -234,7 +234,7 @@ export default function OutputPanel({ result }) {
   const isSubmit = isResult && result.mode === 'submit'
 
   return (
-    <div className="border-ink/10 bg-white/80 dark:border-white/12 dark:bg-zinc-800/90 flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border px-4 py-3 shadow-sm">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-zinc-50 px-4 py-3 shadow-sm dark:border-white/12 dark:bg-zinc-900">
       <p className="text-ink/45 font-mono text-[11px] tracking-widest uppercase">
         Output
       </p>

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Moon, Sun } from 'lucide-react'
-import { useTheme } from '../../context/ThemeProvider.jsx'
+import PracticeSolveShell from '../../layouts/PracticeSolveShell.jsx'
 import {
   checkQuestionAnswer,
   fetchQuestionPage,
@@ -14,9 +13,6 @@ const QUESTIONS_PER_PAGE = 10
 export default function AptitudeSolve() {
   const { setId } = useParams()
   const navigate = useNavigate()
-  const { theme, toggleTheme } = useTheme()
-  const isDark = theme === 'dark'
-
   const match = useMemo(() => findAptitudeSet(setId), [setId])
   const subject = useMemo(() => {
     if (!match?.section?.id) return null
@@ -110,17 +106,19 @@ export default function AptitudeSolve() {
 
   if (!match) {
     return (
-      <SolveShell isDark={isDark} toggleTheme={toggleTheme} onBack={() => navigate('/aptitude')}>
+      <PracticeSolveShell
+        backLabel="Aptitude"
+        onBack={() => navigate('/aptitude')}
+      >
         <p className="text-ink/70 text-sm">This practice set was not found.</p>
-      </SolveShell>
+      </PracticeSolveShell>
     )
   }
 
   if (!loading && (loadError || totalQuestions === 0)) {
     return (
-      <SolveShell
-        isDark={isDark}
-        toggleTheme={toggleTheme}
+      <PracticeSolveShell
+        backLabel="Aptitude"
         title={match.set.title}
         onBack={() => navigate('/aptitude')}
       >
@@ -129,7 +127,7 @@ export default function AptitudeSolve() {
             ? 'Could not load questions. Check that the backend is running.'
             : 'Questions for this set are coming soon.'}
         </p>
-      </SolveShell>
+      </PracticeSolveShell>
     )
   }
 
@@ -141,9 +139,8 @@ export default function AptitudeSolve() {
   const pageEnd = Math.min(apiPage * QUESTIONS_PER_PAGE, totalQuestions)
 
   return (
-    <SolveShell
-      isDark={isDark}
-      toggleTheme={toggleTheme}
+    <PracticeSolveShell
+      backLabel="Aptitude"
       title={match.set.title}
       subtitle={match.section.title}
       onBack={() => navigate('/aptitude')}
@@ -177,7 +174,7 @@ export default function AptitudeSolve() {
               return (
                 <li
                   key={question._id}
-                  className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 rounded-2xl border p-5 backdrop-blur-md sm:p-6"
+                  className="practice-panel rounded-2xl p-5 shadow-sm sm:p-6"
                 >
                   <p className="text-ink/45 font-mono text-[11px] tracking-widest uppercase">
                     Question {questionNumber}
@@ -270,66 +267,6 @@ export default function AptitudeSolve() {
           ) : null}
         </>
       )}
-    </SolveShell>
-  )
-}
-
-function SolveShell({
-  isDark,
-  toggleTheme,
-  title,
-  subtitle,
-  onBack,
-  children,
-}) {
-  return (
-    <div className="relative flex min-h-screen flex-col">
-      <div
-        className="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url('${isDark ? '/dark_bg.png' : '/light_bg.jpeg'}')`,
-        }}
-      />
-      <div
-        className={
-          isDark
-            ? 'fixed inset-0 z-0 bg-black/75'
-            : 'bg-cream/75 fixed inset-0 z-0'
-        }
-      />
-
-      <header className="border-ink/10 bg-cream/70 dark:border-white/10 dark:bg-black/55 relative z-10 flex items-center justify-between gap-3 border-b px-4 py-3 backdrop-blur-xl sm:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            className="border-ink/15 text-ink/70 hover:border-ink/30 hover:text-ink flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm"
-          >
-            <ArrowLeft size={16} />
-            Aptitude
-          </button>
-          {title ? (
-            <div className="min-w-0">
-              <p className="truncate font-medium">{title}</p>
-              {subtitle ? (
-                <p className="text-ink/50 truncate text-xs">{subtitle}</p>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-          onClick={toggleTheme}
-          className="border-ink/15 text-ink/70 hover:border-ink/30 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border"
-        >
-          {isDark ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
-      </header>
-
-      <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 p-4 sm:p-8">
-        {children}
-      </main>
-    </div>
+    </PracticeSolveShell>
   )
 }

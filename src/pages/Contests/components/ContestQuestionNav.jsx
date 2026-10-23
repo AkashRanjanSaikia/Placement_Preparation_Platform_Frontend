@@ -8,7 +8,7 @@ function ContestQuestionNav({
   onSelect,
 }) {
   return (
-    <aside className="border-ink/10 rounded-2xl border p-4">
+    <aside className="practice-panel rounded-2xl p-4 shadow-sm">
       <p className="text-ink/50 font-mono text-[11px] tracking-widest uppercase">
         Questions
       </p>
