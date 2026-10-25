@@ -2,14 +2,17 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../context/AuthProvider.jsx'
+import { useAuthFormRedirect } from '../../hooks/useAuthFormRedirect.js'
 import AuthShell from './AuthShell.jsx'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
+const MAX_PASSWORD_LENGTH = 128
 
 export default function SignupPage() {
   const navigate = useNavigate()
   const { register } = useAuth()
+  const { redirectTo, redirectQuery, intentMessage } = useAuthFormRedirect()
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -31,6 +34,11 @@ export default function SignupPage() {
       return
     }
 
+    if (trimmedName.length > 120) {
+      setError('Name must be at most 120 characters.')
+      return
+    }
+
     if (!trimmedEmail || !password || !confirmPassword) {
       setError('All fields are required.')
       return
@@ -46,6 +54,11 @@ export default function SignupPage() {
       return
     }
 
+    if (password.length > MAX_PASSWORD_LENGTH) {
+      setError(`Password must be at most ${MAX_PASSWORD_LENGTH} characters.`)
+      return
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match.')
       return
@@ -58,7 +71,7 @@ export default function SignupPage() {
         email: trimmedEmail,
         password,
       })
-      navigate('/dsa-practice', { replace: true })
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.')
     } finally {
@@ -70,10 +83,14 @@ export default function SignupPage() {
     <AuthShell
       title="Sign up"
       subtitle="Create your Prepify account and start practicing."
+      banner={intentMessage}
       footer={
         <p className="text-ink/60 text-center text-sm">
           Already have an account?{' '}
-          <Link to="/login" className="text-gold font-medium hover:underline">
+          <Link
+            to={`/login${redirectQuery}`}
+            className="text-gold font-medium hover:underline"
+          >
             Log in
           </Link>
         </p>

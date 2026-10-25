@@ -1,7 +1,9 @@
 import axios from 'axios'
 import csCoreData from './csCoreData.json'
 
-const backendUrl = import.meta.env.BACKEND_URL
+import { getApiBase } from '../../config/apiBase.js'
+
+const backendUrl = getApiBase()
 
 export const CS_CORE_CATEGORY = 'core_cs'
 export const CS_CORE_SUBJECT = 'fundamentals'

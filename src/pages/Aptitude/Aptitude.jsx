@@ -12,7 +12,28 @@ const difficultyStyles = {
   Hard: 'bg-rose-500/12 text-rose-700 dark:text-rose-300',
 }
 
-function filterSets(sets, query, difficulty) {
+const DIFFICULTY_LABELS = {
+  easy: 'Easy',
+  medium: 'Medium',
+  hard: 'Hard',
+}
+
+function questionMatchesDifficulty(questionDifficulty, difficultyFilter) {
+  if (difficultyFilter === 'All') return true
+  const key = String(questionDifficulty ?? 'medium').toLowerCase()
+  return (DIFFICULTY_LABELS[key] ?? 'Medium') === difficultyFilter
+}
+
+function topicHasMatchingQuestion(topicId, query, difficulty, questionsByTopic) {
+  if (!query || !topicId) return false
+  const list = questionsByTopic?.[topicId] ?? []
+  return list.some((item) => {
+    const text = item.questionText?.toLowerCase() ?? ''
+    return text.includes(query) && questionMatchesDifficulty(item.difficulty, difficulty)
+  })
+}
+
+function filterSets(sets, query, difficulty, questionsByTopic) {
   const list = Array.isArray(sets) ? sets : []
   const normalizedQuery = query.trim().toLowerCase()
 
@@ -22,7 +43,7 @@ function filterSets(sets, query, difficulty) {
     const matchesSearch =
       !normalizedQuery ||
       set.title?.toLowerCase().includes(normalizedQuery) ||
-      set.tags?.some((tag) => tag.toLowerCase().includes(normalizedQuery))
+      topicHasMatchingQuestion(set.id, normalizedQuery, difficulty, questionsByTopic)
 
     return matchesDifficulty && matchesSearch
   })
@@ -33,6 +54,7 @@ export default function AptitudePage() {
   const [difficulty, setDifficulty] = useState('All')
   const [openSectionIds, setOpenSectionIds] = useState(() => new Set())
   const [topicCounts, setTopicCounts] = useState({})
+  const [questionsByTopic, setQuestionsByTopic] = useState({})
   const [countsLoading, setCountsLoading] = useState(true)
 
   useEffect(() => {
@@ -47,8 +69,15 @@ export default function AptitudePage() {
         setTopicCounts(
           counts && typeof counts === 'object' ? counts : {},
         )
+        const byTopic = data?.questionsByTopic
+        setQuestionsByTopic(
+          byTopic && typeof byTopic === 'object' ? byTopic : {},
+        )
       } catch {
-        if (!cancelled) setTopicCounts({})
+        if (!cancelled) {
+          setTopicCounts({})
+          setQuestionsByTopic({})
+        }
       } finally {
         if (!cancelled) setCountsLoading(false)
       }
@@ -78,25 +107,29 @@ export default function AptitudePage() {
 
     return rawSections
       .map((section) => {
-        const sets = filterSets(section.sets, query, difficulty)
-        const sectionMatchesQuery =
-          query &&
-          (section.title?.toLowerCase().includes(query) ||
-            section.description?.toLowerCase().includes(query))
-
-        if (query && sets.length === 0 && !sectionMatchesQuery) {
-          return null
-        }
-
-        return {
-          ...section,
-          sets: sectionMatchesQuery && sets.length === 0
-            ? filterSets(section.sets, '', difficulty)
-            : sets,
-        }
+        const sets = filterSets(
+          section.sets,
+          query,
+          difficulty,
+          questionsByTopic,
+        )
+        if (query && sets.length === 0) return null
+        return { ...section, sets }
       })
       .filter(Boolean)
-  }, [search, difficulty])
+  }, [search, difficulty, questionsByTopic])
+
+  useEffect(() => {
+    const query = (search ?? '').trim()
+    if (!query) return
+    setOpenSectionIds((current) => {
+      const next = new Set(current)
+      for (const section of sections) {
+        if (section.sets.length > 0) next.add(section.id)
+      }
+      return next
+    })
+  }, [search, sections])
 
   const totalSets = sections.reduce((sum, section) => sum + section.sets.length, 0)
 
@@ -130,7 +163,9 @@ export default function AptitudePage() {
 
       {totalSets === 0 ? (
         <p className="text-ink/55 mt-8 text-center text-sm">
-          No practice sets match your filters.
+          {(search ?? '').trim()
+            ? 'No questions match your search.'
+            : 'No practice sets match your filters.'}
         </p>
       ) : (
         <div className="mt-8 flex flex-col gap-10">
@@ -183,7 +218,7 @@ export default function AptitudePage() {
                   }`}
                 >
                   <div
-                    className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 overflow-hidden rounded-2xl border backdrop-blur-md"
+                    className="dashboard-panel overflow-hidden rounded-2xl"
                   >
                     <div className="text-ink/45 hidden grid-cols-[1fr_6rem_8rem] gap-3 border-b border-ink/10 px-5 py-3 font-mono text-[11px] tracking-widest uppercase md:grid dark:border-white/10">
                       <span>Set</span>

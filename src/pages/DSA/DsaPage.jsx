@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 import axios from 'axios'
 
-const backendUrl = import.meta.env.BACKEND_URL
+import { getApiBase } from '../../config/apiBase.js'
+
+const backendUrl = getApiBase()
 
 const difficulties = ['All', 'Easy', 'Medium', 'Hard']
 
@@ -35,9 +37,7 @@ export default function DsaPage() {
       const matchesDifficulty =
         difficulty === 'All' || question.difficulty === difficulty
       const matchesSearch =
-        !query ||
-        question.title?.toLowerCase().includes(query) ||
-        question.tags?.some((tag) => tag.toLowerCase().includes(query))
+        !query || question.title?.toLowerCase().includes(query)
 
       return matchesDifficulty && matchesSearch
     })
@@ -73,7 +73,7 @@ export default function DsaPage() {
         ))}
       </div>
 
-      <div className="border-ink/10 bg-white/65 dark:border-white/10 dark:bg-black/50 mt-6 overflow-hidden rounded-2xl border backdrop-blur-md">
+      <div className="dashboard-panel mt-6 overflow-hidden rounded-2xl">
         <div className="text-ink/45 hidden grid-cols-[3rem_1fr_8rem_10rem_6rem] gap-3 border-b border-ink/10 px-5 py-3 font-mono text-[11px] tracking-widest uppercase md:grid dark:border-white/10">
           <span>#</span>
           <span>Title</span>

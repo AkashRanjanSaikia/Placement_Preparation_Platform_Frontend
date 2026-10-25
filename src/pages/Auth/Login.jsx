@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../context/AuthProvider.jsx'
+import { useAuthFormRedirect } from '../../hooks/useAuthFormRedirect.js'
 import AuthShell from './AuthShell.jsx'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -9,6 +10,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export default function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { redirectTo, redirectQuery, intentMessage } = useAuthFormRedirect()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -34,7 +36,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login({ email: trimmedEmail, password })
-      navigate('/dsa-practice', { replace: true })
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.')
     } finally {
@@ -46,10 +48,14 @@ export default function LoginPage() {
     <AuthShell
       title="Log in"
       subtitle="Welcome back. Continue your placement prep."
+      banner={intentMessage}
       footer={
         <p className="text-ink/60 text-center text-sm">
           Don&apos;t have an account?{' '}
-          <Link to="/signup" className="text-gold font-medium hover:underline">
+          <Link
+            to={`/signup${redirectQuery}`}
+            className="text-gold font-medium hover:underline"
+          >
             Sign up
           </Link>
         </p>

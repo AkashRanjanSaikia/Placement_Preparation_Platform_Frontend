@@ -1,26 +1,15 @@
 import { Link } from 'react-router-dom'
 import { Moon, Sun } from 'lucide-react'
 import { useTheme } from '../../context/ThemeProvider.jsx'
+import ThemedBackdrop from '../../components/ThemedBackdrop.jsx'
 
-export default function AuthShell({ title, subtitle, children, footer }) {
+export default function AuthShell({ title, subtitle, banner, children, footer }) {
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
 
   return (
     <div className="relative flex min-h-screen flex-col">
-      <div
-        className="fixed inset-0 z-[-1] bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url('${isDark ? '/dark_bg.png' : '/light_bg.jpeg'}')`,
-        }}
-      />
-      <div
-        className={
-          isDark
-            ? 'fixed inset-0 z-0 bg-black/75'
-            : 'bg-cream/75 fixed inset-0 z-0'
-        }
-      />
+      <ThemedBackdrop variant="dashboard" />
 
       <header className="border-ink/10 bg-cream/70 dark:border-white/10 dark:bg-black/55 relative z-10 flex items-center justify-between gap-3 border-b px-4 py-3 backdrop-blur-xl sm:px-6">
         <Link
@@ -47,6 +36,11 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{title}</h1>
           {subtitle ? (
             <p className="text-ink/60 mt-2 text-sm">{subtitle}</p>
+          ) : null}
+          {banner ? (
+            <p className="text-ink/70 mt-4 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-sm dark:text-sky-100">
+              {banner}
+            </p>
           ) : null}
           <div className="mt-6">{children}</div>
           {footer ? <div className="mt-6 border-t border-ink/10 pt-6 dark:border-white/10">{footer}</div> : null}

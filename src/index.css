@@ -32,6 +32,115 @@
   }
 }
 
+/* Focused practice views only (problem solve, aptitude set, contest room) — not dashboard lists */
+@layer components {
+  .practice-chrome {
+    @apply border-ink/10 border-b bg-white dark:border-white/10 dark:bg-zinc-900/95;
+  }
+
+  .practice-panel {
+    @apply border-ink/10 border bg-white dark:border-white/10 dark:bg-zinc-900;
+  }
+
+  /* Full-area fill below practice headers — hides wallpaper in the work zone */
+  .practice-canvas {
+    @apply min-h-0 flex-1 bg-zinc-100 dark:bg-zinc-950;
+  }
+
+  /* Dashboard shell — soft canvas + slightly brighter chrome and cards */
+  .dashboard-canvas {
+    @apply min-h-0 flex-1 bg-zinc-100 dark:bg-zinc-950;
+  }
+
+  .dashboard-chrome {
+    @apply border-ink/10 border-b bg-white dark:border-white/10 dark:bg-zinc-900;
+  }
+
+  .dashboard-sidebar {
+    @apply border-ink/10 border-r bg-white dark:border-white/10 dark:bg-zinc-900;
+  }
+
+  .dashboard-panel {
+    @apply border-ink/10 border bg-white shadow-sm dark:border-white/10 dark:bg-zinc-900;
+  }
+
+  .contest-btn-register {
+    @apply border border-rose-400/60 bg-white text-rose-700 shadow-[0_0_18px_rgba(244,63,94,0.35)] hover:border-rose-500/80 hover:shadow-[0_0_22px_rgba(244,63,94,0.45)] dark:border-rose-500/50 dark:bg-zinc-900 dark:text-rose-300;
+  }
+
+  .contest-btn-enter {
+    @apply border border-emerald-500/60 bg-emerald-600 text-white shadow-[0_0_18px_rgba(34,197,94,0.4)] hover:bg-emerald-700 hover:shadow-[0_0_22px_rgba(34,197,94,0.5)] dark:border-emerald-400/50 dark:bg-emerald-600 dark:text-white;
+  }
+
+  .landing-feature-card--pending {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+
+  .landing-feature-card--in {
+    animation: landing-feature-enter 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .landing-feature-card:hover {
+    @apply border-gold/55;
+    box-shadow:
+      0 0 0 1px rgba(185, 134, 47, 0.35),
+      0 0 40px rgba(185, 134, 47, 0.42),
+      0 12px 40px rgba(185, 134, 47, 0.18);
+  }
+
+  .dark .landing-feature-card:hover {
+    box-shadow:
+      0 0 0 1px rgba(212, 160, 23, 0.4),
+      0 0 32px rgba(212, 160, 23, 0.28);
+  }
+
+  .landing-nav--top {
+    @apply border-b border-transparent bg-transparent;
+  }
+
+  .landing-nav--scrolled {
+    @apply border-ink/10 bg-cream/50 shadow-[0_8px_32px_rgba(20,18,15,0.06)] backdrop-blur-xl dark:border-white/10 dark:bg-black/40;
+  }
+
+  .landing-nav-dropdown {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    transition:
+      opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .landing-nav-dropdown--open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .landing-feature-card--pending {
+      opacity: 1;
+      transform: none;
+    }
+
+    .landing-feature-card--in {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@keyframes landing-feature-enter {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .panel-separator {
   display: flex;
   align-items: center;

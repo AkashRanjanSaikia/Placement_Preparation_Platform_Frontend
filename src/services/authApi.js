@@ -1,6 +1,7 @@
 import axios from 'axios'
+import { getApiBase } from '../config/apiBase.js'
 
-const backendUrl = import.meta.env.BACKEND_URL
+const backendUrl = getApiBase()
 
 function getErrorMessage(error, fallback) {
   const message = error?.response?.data?.message
@@ -35,5 +36,16 @@ export async function loginUser({ email, password }) {
     return res.data
   } catch (error) {
     throw new Error(getErrorMessage(error, 'Login failed. Please try again.'))
+  }
+}
+
+export async function fetchCurrentUser(token) {
+  try {
+    const res = await axios.get(`${backendUrl}/auth/me`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+    return res.data
+  } catch (error) {
+    throw new Error(getErrorMessage(error, 'Session expired. Please log in again.'))
   }
 }
