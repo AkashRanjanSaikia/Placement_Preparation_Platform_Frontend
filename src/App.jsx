@@ -29,23 +29,26 @@ function App() {
       </Route>
       <Route path="/admin/contest/create" element={<CreateContest mode="admin" />} />
 
-      <Route element={<RequireAuth />}>
-        <Route path="/dsa-practice/:slug" element={<ProblemSolve />} />
-        <Route path="/aptitude/:setId" element={<AptitudeSolve />} />
-        <Route path="/cs-core/:setId" element={<CSCoreSolve />} />
-        <Route path="/contests/:id/room" element={<ContestRoom />} />
+      <Route path="/dsa-practice/:slug" element={<ProblemSolve />} />
+      <Route path="/aptitude/:setId" element={<AptitudeSolve />} />
+      <Route path="/cs-core/:setId" element={<CSCoreSolve />} />
 
+      <Route element={<DashboardLayout />}>
+        <Route path="dsa-practice" element={<DsaPage />} />
+        <Route path="cs-core" element={<CSCorePage />} />
+        <Route path="interview" element={<InterviewPage />} />
+        <Route path="aptitude" element={<AptitudePage />} />
+        <Route path="contests" element={<ContestList />} />
+        <Route path="contests/:id" element={<ContestDetail />} />
+        <Route path="contests/:id/leaderboard" element={<Leaderboard />} />
+      </Route>
+
+      <Route element={<RequireAuth />}>
+        <Route path="/contests/:id/room" element={<ContestRoom />} />
         <Route element={<DashboardLayout />}>
-          <Route path="dsa-practice" element={<DsaPage />} />
-          <Route path="cs-core" element={<CSCorePage />} />
-          <Route path="interview" element={<InterviewPage />} />
-          <Route path="aptitude" element={<AptitudePage />} />
-          <Route path="contests" element={<ContestList />} />
           <Route path="contests/create" element={<CreateContest mode="host" />} />
           <Route path="contests/edit/:draftId" element={<CreateContest mode="host" />} />
           <Route path="contests/manage/:id" element={<HostContestManage />} />
-          <Route path="contests/:id" element={<ContestDetail />} />
-          <Route path="contests/:id/leaderboard" element={<Leaderboard />} />
         </Route>
       </Route>
     </Routes>

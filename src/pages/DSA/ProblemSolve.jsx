@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../../context/AuthProvider.jsx'
+import LoginPromptModal from '../../components/LoginPromptModal.jsx'
 import Editor from '@monaco-editor/react'
 import axios from 'axios'
 import {
@@ -163,9 +165,12 @@ function ResizeHandle({ orientation = 'horizontal' }) {
 export default function ProblemSolve() {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { isAuthenticated } = useAuth()
   const { theme } = useTheme()
   const isDark = theme === 'dark'
 
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false)
   const [problem, setProblem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -239,6 +244,11 @@ export default function ProblemSolve() {
   }
 
   const runCode = async () => {
+    if (!isAuthenticated) {
+      setLoginPromptOpen(true)
+      return
+    }
+
     const problemSlug = problem?.slug ?? slug
     const languageId = languages.find((item) => item.id === language)?.judge0Id
 
@@ -273,6 +283,11 @@ export default function ProblemSolve() {
   }
 
   const submitCode = async () => {
+    if (!isAuthenticated) {
+      setLoginPromptOpen(true)
+      return
+    }
+
     const problemSlug = problem?.slug ?? slug
     const languageId = languages.find((item) => item.id === language)?.judge0Id
 
@@ -502,6 +517,13 @@ export default function ProblemSolve() {
         </Group>
       </div>
 
+      <LoginPromptModal
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        redirectTo={`${location.pathname}${location.search}`}
+        title="Log in to run or submit"
+        description="You can read problems and edit code without an account. Log in to run against test cases and submit your solution."
+      />
     </div>
   )
 }

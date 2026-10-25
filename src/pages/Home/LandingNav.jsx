@@ -1,8 +1,6 @@
 import { ChevronDown } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/AuthProvider.jsx'
-import { buildLoginUrl } from '../../utils/authRedirect.js'
 
 const PRACTICE_ITEMS = [
   { label: 'DSA Practice', path: '/dsa-practice' },
@@ -104,17 +102,12 @@ function NavDropdown({ label, items, onNavigate }) {
 
 export default function LandingNav({ onScrollToAbout }) {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
 
-  const goProtected = useCallback(
+  const goToApp = useCallback(
     (path) => {
-      if (isAuthenticated) {
-        navigate(path)
-        return
-      }
-      navigate(buildLoginUrl(path))
+      navigate(path)
     },
-    [isAuthenticated, navigate],
+    [navigate],
   )
 
   const scrollToTop = () => {
@@ -134,17 +127,17 @@ export default function LandingNav({ onScrollToAbout }) {
         Home
       </button>
 
-      <NavDropdown label="Practice" items={PRACTICE_ITEMS} onNavigate={goProtected} />
+      <NavDropdown label="Practice" items={PRACTICE_ITEMS} onNavigate={goToApp} />
 
       <button
         type="button"
-        onClick={() => goProtected('/interview')}
+        onClick={() => goToApp('/interview')}
         className="py-1 transition-colors hover:text-ink"
       >
         AI Interview
       </button>
 
-      <NavDropdown label="Contests" items={CONTEST_ITEMS} onNavigate={goProtected} />
+      <NavDropdown label="Contests" items={CONTEST_ITEMS} onNavigate={goToApp} />
 
       <button
         type="button"

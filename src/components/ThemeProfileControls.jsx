@@ -1,5 +1,8 @@
 import { Moon, Sun } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeProvider.jsx'
+import { useAuth } from '../context/AuthProvider.jsx'
+import { buildLoginUrl, buildSignupUrl } from '../utils/authRedirect.js'
 import UserProfileMenu from './UserProfileMenu.jsx'
 
 const themeButtonClass =
@@ -10,7 +13,10 @@ const themeButtonClass =
  */
 export default function ThemeProfileControls({ className = '' }) {
   const { theme, toggleTheme } = useTheme()
+  const { isAuthenticated } = useAuth()
+  const location = useLocation()
   const isDark = theme === 'dark'
+  const returnPath = `${location.pathname}${location.search}`
 
   return (
     <div
@@ -24,6 +30,22 @@ export default function ThemeProfileControls({ className = '' }) {
       >
         {isDark ? <Sun size={16} /> : <Moon size={16} />}
       </button>
+      {!isAuthenticated ? (
+        <>
+          <Link
+            to={buildLoginUrl(returnPath)}
+            className="border-ink/15 text-ink/80 hover:border-ink/30 rounded-full border px-3 py-1.5 text-sm font-medium sm:px-4 sm:py-2"
+          >
+            Log in
+          </Link>
+          <Link
+            to={buildSignupUrl(returnPath)}
+            className="bg-ink text-cream rounded-full px-3 py-1.5 text-sm font-medium sm:px-4 sm:py-2 dark:bg-gold dark:text-black"
+          >
+            Sign up
+          </Link>
+        </>
+      ) : null}
       <UserProfileMenu />
     </div>
   )

@@ -9,8 +9,6 @@ import {
   Trophy,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/AuthProvider.jsx'
-import { buildLoginUrl } from '../../utils/authRedirect.js'
 
 const FEATURES = [
   {
@@ -62,7 +60,6 @@ const FEATURES = [
 
 export default function HomeFeatureShowcase({ sectionRef, forceReveal }) {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
   const [visible, setVisible] = useState(false)
   const observerRef = useRef(null)
 
@@ -89,11 +86,7 @@ export default function HomeFeatureShowcase({ sectionRef, forceReveal }) {
   }, [sectionRef])
 
   const goToFeature = (path) => {
-    if (isAuthenticated) {
-      navigate(path)
-      return
-    }
-    navigate(buildLoginUrl(path))
+    navigate(path)
   }
 
   return (

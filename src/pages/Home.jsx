@@ -8,7 +8,6 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthProvider.jsx'
-import { buildLoginUrl, buildSignupUrl } from '../utils/authRedirect.js'
 import ThemeProfileControls from '../components/ThemeProfileControls.jsx'
 import ThemedBackdrop from '../components/ThemedBackdrop.jsx'
 import HomeFeatureShowcase from './Home/HomeFeatureShowcase.jsx'
@@ -38,11 +37,7 @@ export default function Home() {
   }, [])
 
   const handleStartJourney = () => {
-    if (isAuthenticated) {
-      navigate('/dsa-practice')
-      return
-    }
-    navigate(buildLoginUrl('/dsa-practice'))
+    navigate('/dsa-practice')
   }
 
   const handleExploreFeatures = useCallback(() => {
@@ -110,24 +105,6 @@ export default function Home() {
 
         <div className="flex items-center justify-end gap-2 sm:gap-3 justify-self-end">
           <ThemeProfileControls />
-          {!isAuthenticated ? (
-            <>
-              <button
-                type="button"
-                onClick={() => navigate(buildLoginUrl('/'))}
-                className="border-ink/15 hover:border-ink/30 rounded-full border px-4 py-2 text-sm font-medium"
-              >
-                Log In
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate(buildSignupUrl('/'))}
-                className="bg-ink text-cream hover:bg-ink/90 rounded-full px-4 py-2 text-sm font-medium"
-              >
-                Sign Up
-              </button>
-            </>
-          ) : null}
         </div>
       </header>
 

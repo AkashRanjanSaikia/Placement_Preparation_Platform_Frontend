@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import LoginPromptModal from '../../components/LoginPromptModal.jsx'
+import { useAuth } from '../../context/AuthProvider.jsx'
 import PracticeSolveShell from '../../layouts/PracticeSolveShell.jsx'
 import {
   checkQuestionAnswer,
@@ -23,6 +25,9 @@ export default function CSCoreSolve() {
   const { setId } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { isAuthenticated } = useAuth()
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false)
   const match = useMemo(() => findCsCorePractice(setId), [setId])
 
   const initialDifficulty = parseDifficultyParam(searchParams.get('difficulty'))
@@ -90,6 +95,11 @@ export default function CSCoreSolve() {
   const handleCheck = useCallback(async (question, optionIndex) => {
     if (!question?._id) return
 
+    if (!isAuthenticated) {
+      setLoginPromptOpen(true)
+      return
+    }
+
     const checkState = checks[question._id]
     const solved = checkState?.result === 'correct'
     if (checkingId === question._id || solved) return
@@ -117,7 +127,7 @@ export default function CSCoreSolve() {
     } finally {
       setCheckingId(null)
     }
-  }, [checks, checkingId])
+  }, [checks, checkingId, isAuthenticated])
 
   if (!match) {
     return (
@@ -318,6 +328,13 @@ export default function CSCoreSolve() {
           ) : null}
         </>
       )}
+      <LoginPromptModal
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        redirectTo={`${location.pathname}${location.search}`}
+        title="Log in to check your answer"
+        description="Browse CS fundamentals questions for free. Log in when you are ready to submit an option and see if you are correct."
+      />
     </PracticeSolveShell>
   )
 }

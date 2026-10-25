@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import LoginPromptModal from '../../components/LoginPromptModal.jsx'
+import { useAuth } from '../../context/AuthProvider.jsx'
 import PracticeSolveShell from '../../layouts/PracticeSolveShell.jsx'
 import {
   checkQuestionAnswer,
@@ -13,6 +15,9 @@ const QUESTIONS_PER_PAGE = 10
 export default function AptitudeSolve() {
   const { setId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { isAuthenticated } = useAuth()
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false)
   const match = useMemo(() => findAptitudeSet(setId), [setId])
   const subject = useMemo(() => {
     if (!match?.section?.id) return null
@@ -75,6 +80,11 @@ export default function AptitudeSolve() {
   const handleCheck = useCallback(async (question, optionIndex) => {
     if (!question?._id) return
 
+    if (!isAuthenticated) {
+      setLoginPromptOpen(true)
+      return
+    }
+
     const checkState = checks[question._id]
     const solved = checkState?.result === 'correct'
     if (checkingId === question._id || solved) return
@@ -102,7 +112,7 @@ export default function AptitudeSolve() {
     } finally {
       setCheckingId(null)
     }
-  }, [checks, checkingId])
+  }, [checks, checkingId, isAuthenticated])
 
   if (!match) {
     return (
@@ -267,6 +277,13 @@ export default function AptitudeSolve() {
           ) : null}
         </>
       )}
+      <LoginPromptModal
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        redirectTo={`${location.pathname}${location.search}`}
+        title="Log in to check your answer"
+        description="Browse aptitude questions for free. Log in when you are ready to submit an option and see if you are correct."
+      />
     </PracticeSolveShell>
   )
 }
