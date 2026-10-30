@@ -22,6 +22,45 @@ import { getApiBase } from '../../config/apiBase.js'
 
 const backendUrl = getApiBase()
 
+const DRAFT_STORAGE_PREFIX = 'dsa-problem-draft:'
+/** Keep drafts for 7 days, then discard on next visit */
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+function draftStorageKey(slug) {
+  return `${DRAFT_STORAGE_PREFIX}${slug}`
+}
+
+function readDraft(slug) {
+  if (!slug) return null
+  try {
+    const raw = localStorage.getItem(draftStorageKey(slug))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (
+      typeof parsed?.savedAt !== 'number' ||
+      Date.now() - parsed.savedAt > DRAFT_TTL_MS
+    ) {
+      localStorage.removeItem(draftStorageKey(slug))
+      return null
+    }
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeDraft(slug, draft) {
+  if (!slug) return
+  try {
+    localStorage.setItem(
+      draftStorageKey(slug),
+      JSON.stringify({ ...draft, savedAt: Date.now() }),
+    )
+  } catch {
+    // ignore quota / private mode errors
+  }
+}
+
 const languages = [
   { id: 'java', label: 'Java', monaco: 'java', judge0Id: 62 },
   { id: 'python', label: 'Python', monaco: 'python', judge0Id: 71 },
@@ -179,6 +218,7 @@ export default function ProblemSolve() {
   const [output, setOutput] = useState('')
   const [running, setRunning] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [solved, setSolved] = useState(false)
   const editorShellRef = useRef(null)
   const resizingRef = useRef(false)
 
@@ -192,6 +232,31 @@ export default function ProblemSolve() {
     resizingRef.current = false
     editorShellRef.current?.classList.remove('is-resizing')
   }
+
+  useEffect(() => {
+    if (!isAuthenticated || !slug) {
+      setSolved(false)
+      return
+    }
+
+    let cancelled = false
+    const params = new URLSearchParams({ slugs: slug })
+
+    axios
+      .get(`${backendUrl}/submission/me/progress?${params}`)
+      .then((res) => {
+        if (!cancelled) {
+          setSolved(Boolean(res.data?.data?.[slug]?.solved))
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSolved(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, slug])
 
   useEffect(() => {
     let cancelled = false
@@ -212,8 +277,30 @@ export default function ProblemSolve() {
         }
 
         setProblem(next)
-        setLanguage('java')
-        setCodeByLanguage(starterCodeByLanguage(next.starter_code))
+        const starter = starterCodeByLanguage(next.starter_code)
+        const draft = readDraft(slug)
+        const draftLanguages = languages.map((item) => item.id)
+
+        if (
+          draft &&
+          draft.codeByLanguage &&
+          typeof draft.codeByLanguage === 'object'
+        ) {
+          const restoredLanguage = draftLanguages.includes(draft.language)
+            ? draft.language
+            : 'java'
+          setLanguage(restoredLanguage)
+          setCodeByLanguage({ ...starter, ...draft.codeByLanguage })
+          if (typeof draft.output === 'string') {
+            setOutput(draft.output)
+          } else {
+            setOutput('')
+          }
+        } else {
+          setLanguage('java')
+          setCodeByLanguage(starter)
+          setOutput('')
+        }
       } catch {
         if (!cancelled) setError('This problem could not be found.')
       }
@@ -227,6 +314,11 @@ export default function ProblemSolve() {
       cancelled = true
     }
   }, [slug])
+
+  useEffect(() => {
+    if (!slug || loading || !problem) return
+    writeDraft(slug, { language, codeByLanguage, output })
+  }, [slug, language, codeByLanguage, output, loading, problem])
 
   const monacoLanguage = languages.find((item) => item.id === language)?.monaco
 
@@ -310,6 +402,9 @@ export default function ProblemSolve() {
         languageId,
       })
       setOutput(res.data)
+      if (res.data?.allPassed) {
+        setSolved(true)
+      }
     } catch (err) {
       const message =
         err.response?.data?.error ??
@@ -403,6 +498,12 @@ export default function ProblemSolve() {
                       >
                         {problem.difficulty}
                       </span>
+                      {solved ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                          <Check size={12} aria-hidden />
+                          Solved
+                        </span>
+                      ) : null}
                     </div>
                     {problem.description ? (
                       <p className="text-ink/75 mt-5 text-sm leading-relaxed whitespace-pre-wrap">

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { listContests, listMyHostedContests } from './api/contestApi.js'
 import { useAuth } from '../../context/AuthProvider.jsx'
@@ -42,7 +43,7 @@ function TabCountBadge({ count, badgeClass }) {
   const label = count > 99 ? '99+' : String(count)
   return (
     <span
-      className={`${badgeClass} absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-zinc-100 dark:ring-zinc-950`}
+      className={`${badgeClass} absolute -top-1 -right-1 flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-zinc-100 dark:ring-zinc-950`}
       aria-hidden
     >
       {label}
@@ -74,6 +75,7 @@ export default function ContestList() {
   const [hostStatusFilter, setHostStatusFilter] = useState('all')
   const [sortOrder, setSortOrder] = useState('start_desc')
   const [visibilityFilter, setVisibilityFilter] = useState('all')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [contests, setContests] = useState([])
   const [myContests, setMyContests] = useState([])
   const [loading, setLoading] = useState(true)
@@ -175,6 +177,27 @@ export default function ContestList() {
     return sortContestsByStartTime(filtered, sortKey)
   }, [myContests, hostStatusFilter, search, sortKey, visibilityFilter])
 
+  const hasActiveListFilters =
+    visibilityFilter !== 'all' || sortOrder !== 'start_desc'
+
+  const activeFilterSummary = useMemo(() => {
+    const parts = []
+    if (visibilityFilter !== 'all') {
+      const label = visibilityFilters.find((v) => v.id === visibilityFilter)?.label
+      if (label) parts.push(label)
+    }
+    if (sortOrder !== 'start_desc') {
+      const label = sortOptions.find((s) => s.id === sortOrder)?.label
+      if (label) parts.push(label)
+    }
+    return parts.join(' · ')
+  }, [visibilityFilter, sortOrder])
+
+  const resetListFilters = () => {
+    setVisibilityFilter('all')
+    setSortOrder('start_desc')
+  }
+
   return (
     <div>
       <p className="text-ink/50 font-mono text-xs tracking-widest uppercase">
@@ -210,106 +233,166 @@ export default function ContestList() {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {viewModes.map((mode) => (
+      <div className="mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          <div className="flex flex-wrap gap-2">
+            {viewModes.map((mode) => (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => setViewMode(mode.id)}
+                className={
+                  viewMode === mode.id
+                    ? 'bg-ink text-cream rounded-full px-4 py-1.5 text-sm font-medium dark:bg-gold dark:text-black'
+                    : 'border-ink/15 text-ink/70 hover:border-ink/30 rounded-full border px-4 py-1.5 text-sm'
+                }
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
           <button
-            key={mode.id}
             type="button"
-            onClick={() => setViewMode(mode.id)}
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-expanded={filtersOpen}
+            aria-controls="contest-list-filters"
             className={
-              viewMode === mode.id
-                ? 'bg-ink text-cream rounded-full px-4 py-1.5 text-sm font-medium dark:bg-gold dark:text-black'
-                : 'border-ink/15 text-ink/70 hover:border-ink/30 rounded-full border px-4 py-1.5 text-sm'
+              filtersOpen
+                ? 'border-ink/25 bg-ink/5 inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium dark:border-white/20 dark:bg-white/10'
+                : 'border-ink/15 text-ink/80 hover:border-ink/30 inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-1.5 text-sm dark:hover:border-white/20'
             }
           >
-            {mode.label}
+            <SlidersHorizontal size={16} className="text-ink/60 shrink-0" aria-hidden />
+            Filters
+            {hasActiveListFilters ? (
+              <span className="bg-gold/20 text-ink dark:text-cream rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                On
+              </span>
+            ) : null}
+            <ChevronDown
+              size={16}
+              className={`text-ink/50 shrink-0 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
+              aria-hidden
+            />
           </button>
-        ))}
-      </div>
-
-      {viewMode === 'browse' ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {browseTabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => selectBrowseTab(tab.id)}
-              className={
-                activeTab === tab.id
-                  ? 'relative bg-ink/10 rounded-full py-1.5 pr-5 pl-4 text-sm dark:bg-white/10'
-                  : 'relative border-ink/15 text-ink/70 rounded-full border py-1.5 pr-5 pl-4 text-sm'
-              }
-            >
-              {tab.label}
-              {tab.showBadge ? (
-                <TabCountBadge
-                  count={tabCounts[tab.id]}
-                  badgeClass={tab.badgeClass}
-                />
-              ) : null}
-            </button>
-          ))}
         </div>
-      ) : null}
 
-      {viewMode === 'mine' ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {hostStatusFilters.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setHostStatusFilter(tab.id)}
-              className={
-                hostStatusFilter === tab.id
-                  ? 'bg-ink/10 rounded-full px-4 py-1.5 text-sm dark:bg-white/10'
-                  : 'border-ink/15 text-ink/70 rounded-full border px-4 py-1.5 text-sm'
-              }
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-ink/50 font-mono text-[11px] tracking-widest uppercase">
-            Visibility
-          </span>
-          {visibilityFilters.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setVisibilityFilter(opt.id)}
-              className={
-                visibilityFilter === opt.id
-                  ? 'bg-ink/10 rounded-full px-3 py-1 text-xs font-medium dark:bg-white/10'
-                  : 'border-ink/15 text-ink/70 rounded-full border px-3 py-1 text-xs'
-              }
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label
-            htmlFor="contest-sort"
-            className="text-ink/50 font-mono text-[11px] tracking-widest uppercase"
-          >
-            Sort
-          </label>
-          <select
-            id="contest-sort"
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-            className="border-ink/15 bg-white dark:border-white/10 dark:bg-zinc-900 rounded-full border py-1.5 pr-8 pl-4 text-sm outline-none focus:border-gold/60"
-          >
-            {sortOptions.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
+        {viewMode === 'browse' ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {browseTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => selectBrowseTab(tab.id)}
+                className={
+                  activeTab === tab.id
+                    ? 'relative bg-ink/10 rounded-full py-1.5 pr-5 pl-4 text-sm dark:bg-white/10'
+                    : 'relative border-ink/15 text-ink/70 rounded-full border py-1.5 pr-5 pl-4 text-sm'
+                }
+              >
+                {tab.label}
+                {tab.showBadge ? (
+                  <TabCountBadge
+                    count={tabCounts[tab.id]}
+                    badgeClass={tab.badgeClass}
+                  />
+                ) : null}
+              </button>
             ))}
-          </select>
+          </div>
+        ) : null}
+
+        {viewMode === 'mine' ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {hostStatusFilters.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setHostStatusFilter(tab.id)}
+                className={
+                  hostStatusFilter === tab.id
+                    ? 'bg-ink/10 rounded-full px-4 py-1.5 text-sm dark:bg-white/10'
+                    : 'border-ink/15 text-ink/70 rounded-full border px-4 py-1.5 text-sm'
+                }
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {!filtersOpen && activeFilterSummary ? (
+          <p className="text-ink/50 mt-3 text-sm">{activeFilterSummary}</p>
+        ) : null}
+
+        <div
+          id="contest-list-filters"
+          className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
+            filtersOpen ? 'mt-3 grid-rows-[1fr]' : 'grid-rows-[0fr]'
+          }`}
+        >
+          <div
+            className={`min-h-0 overflow-hidden ${
+              filtersOpen ? '' : 'pointer-events-none'
+            }`}
+          >
+            <div className="border-ink/10 dark:border-white/10 rounded-2xl border bg-white/50 p-4 dark:bg-zinc-900/40">
+              <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-ink/50 mb-2 font-mono text-[11px] tracking-widest uppercase">
+                    Visibility
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {visibilityFilters.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setVisibilityFilter(opt.id)}
+                        className={
+                          visibilityFilter === opt.id
+                            ? 'bg-ink/10 rounded-full px-3 py-1.5 text-xs font-medium dark:bg-white/10'
+                            : 'border-ink/15 text-ink/70 rounded-full border px-3 py-1.5 text-xs'
+                        }
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="min-w-[min(100%,16rem)] sm:max-w-xs">
+                  <label
+                    htmlFor="contest-sort"
+                    className="text-ink/50 mb-2 block font-mono text-[11px] tracking-widest uppercase"
+                  >
+                    Sort by
+                  </label>
+                  <select
+                    id="contest-sort"
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    className="border-ink/15 bg-white dark:border-white/10 dark:bg-zinc-900 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-gold/60"
+                  >
+                    {sortOptions.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {hasActiveListFilters ? (
+                <div className="border-ink/10 mt-4 flex justify-end border-t pt-3 dark:border-white/10">
+                  <button
+                    type="button"
+                    onClick={resetListFilters}
+                    className="text-ink/60 hover:text-ink text-xs underline-offset-2 hover:underline"
+                  >
+                    Reset filters
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -319,40 +402,44 @@ export default function ContestList() {
         ) : null}
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
-        {viewMode === 'mine' && !token ? (
-          <p className="text-ink/50 text-sm">
-            <Link to="/login" className="underline">Log in</Link> to see contests you host.
-          </p>
-        ) : null}
+        {!loading && !error ? (
+          <>
+            {viewMode === 'mine' && !token ? (
+              <p className="text-ink/50 text-sm">
+                <Link to="/login" className="underline">
+                  Log in
+                </Link>{' '}
+                to see contests you host.
+              </p>
+            ) : null}
 
-        {viewMode === 'browse' && !loading && !error && contests.length === 0 ? (
-          <p className="text-ink/50 text-sm">No contests in this tab yet.</p>
-        ) : null}
+            {viewMode === 'browse' && contests.length === 0 ? (
+              <p className="text-ink/50 text-sm">No contests in this tab yet.</p>
+            ) : null}
 
-        {viewMode === 'browse' &&
-        !loading &&
-        !error &&
-        contests.length > 0 &&
-        visibleBrowseContests.length === 0 ? (
-          <p className="text-ink/50 text-sm">
-            No contests match your search or filters.
-          </p>
-        ) : null}
+            {viewMode === 'browse' &&
+            contests.length > 0 &&
+            visibleBrowseContests.length === 0 ? (
+              <p className="text-ink/50 text-sm">
+                No contests match your search or filters.
+              </p>
+            ) : null}
 
-        {viewMode === 'mine' && !loading && !error && myContests.length === 0 ? (
-          <p className="text-ink/50 text-sm">
-            You have not hosted any contests yet. Create one with Host a contest.
-          </p>
-        ) : null}
+            {viewMode === 'mine' && token && myContests.length === 0 ? (
+              <p className="text-ink/50 text-sm">
+                You have not hosted any contests yet. Create one with Host a contest.
+              </p>
+            ) : null}
 
-        {viewMode === 'mine' &&
-        !loading &&
-        !error &&
-        myContests.length > 0 &&
-        visibleHostedContests.length === 0 ? (
-          <p className="text-ink/50 text-sm">
-            No hosted contests match this filter or search.
-          </p>
+            {viewMode === 'mine' &&
+            token &&
+            myContests.length > 0 &&
+            visibleHostedContests.length === 0 ? (
+              <p className="text-ink/50 text-sm">
+                No hosted contests match this filter or search.
+              </p>
+            ) : null}
+          </>
         ) : null}
 
         {viewMode === 'browse'

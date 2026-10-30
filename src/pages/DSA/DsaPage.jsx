@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 import axios from 'axios'
+import { Check } from 'lucide-react'
 
+import { useAuth } from '../../context/AuthProvider.jsx'
 import { getApiBase } from '../../config/apiBase.js'
 
 const backendUrl = getApiBase()
@@ -16,8 +18,10 @@ const difficultyStyles = {
 
 export default function DsaPage() {
   const { search } = useOutletContext()
+  const { isAuthenticated } = useAuth()
   const [difficulty, setDifficulty] = useState('All')
   const [problems, setProblems] = useState([])
+  const [solvedBySlug, setSolvedBySlug] = useState({})
 
   useEffect(() => {
     axios
@@ -28,6 +32,34 @@ export default function DsaPage() {
       })
       .catch(() => setProblems([]))
   }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated || problems.length === 0) {
+      setSolvedBySlug({})
+      return
+    }
+
+    const slugs = problems.map((p) => p.slug).filter(Boolean)
+    if (slugs.length === 0) return
+
+    let cancelled = false
+    const params = new URLSearchParams({ slugs: slugs.join(',') })
+
+    axios
+      .get(`${backendUrl}/submission/me/progress?${params}`)
+      .then((res) => {
+        if (!cancelled) {
+          setSolvedBySlug(res.data?.data ?? {})
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSolvedBySlug({})
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, problems])
 
   const questions = useMemo(() => {
     const query = (search ?? '').trim().toLowerCase()
@@ -74,8 +106,9 @@ export default function DsaPage() {
       </div>
 
       <div className="dashboard-panel mt-6 overflow-hidden rounded-2xl">
-        <div className="text-ink/45 hidden grid-cols-[3rem_1fr_8rem_10rem_6rem] gap-3 border-b border-ink/10 px-5 py-3 font-mono text-[11px] tracking-widest uppercase md:grid dark:border-white/10">
+        <div className="text-ink/45 hidden grid-cols-[3rem_2.5rem_1fr_8rem_10rem_6rem] gap-3 border-b border-ink/10 px-5 py-3 font-mono text-[11px] tracking-widest uppercase md:grid dark:border-white/10">
           <span>#</span>
+          <span className="text-center">Done</span>
           <span>Title</span>
           <span>Difficulty</span>
           <span>Tags</span>
@@ -91,15 +124,34 @@ export default function DsaPage() {
             {questions.map((question, index) => (
               <li
                 key={question.slug || question._id}
-                className="border-ink/10 hover:bg-ink/3 dark:border-white/10 grid grid-cols-1 gap-2 border-b px-5 py-4 last:border-b-0 md:grid-cols-[3rem_1fr_8rem_10rem_6rem] md:items-center md:gap-3"
+                className="border-ink/10 hover:bg-ink/3 dark:border-white/10 grid grid-cols-1 gap-2 border-b px-5 py-4 last:border-b-0 md:grid-cols-[3rem_2.5rem_1fr_8rem_10rem_6rem] md:items-center md:gap-3"
               >
                 <span className="text-ink/40 font-mono text-xs">
                   {String(index + 1).padStart(2, '0')}
                 </span>
+                <span className="hidden items-center justify-center md:flex">
+                  {solvedBySlug[question.slug]?.solved ? (
+                    <span
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+                      title="Solved"
+                    >
+                      <Check size={15} aria-label="Solved" />
+                    </span>
+                  ) : (
+                    <span className="h-7 w-7" aria-hidden />
+                  )}
+                </span>
                 <Link
                   to={`/dsa-practice/${question.slug}`}
-                  className="hover:text-gold font-medium"
+                  className="hover:text-gold flex items-center gap-2 font-medium"
                 >
+                  {solvedBySlug[question.slug]?.solved ? (
+                    <Check
+                      size={16}
+                      className="text-emerald-600 shrink-0 dark:text-emerald-400 md:hidden"
+                      aria-label="Solved"
+                    />
+                  ) : null}
                   {question.title}
                 </Link>
                 <span
